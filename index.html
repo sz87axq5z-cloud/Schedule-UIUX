@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>モノトーン スケジュール</title>
+  <link rel="stylesheet" href="styles/style.css" />
+</head>
+<body>
+  <!-- ログイン画面 -->
+  <div id="login" class="view view-login" aria-hidden="false">
+    <div class="login-card" role="dialog" aria-labelledby="login-title">
+      <h1 id="login-title">スケジュール連携</h1>
+      <p class="desc">モノトーンUIで予定を管理。下のボタンで疑似ログインします。</p>
+      <button id="loginBtn" class="btn btn-google" aria-label="Googleでログイン">Googleでログイン</button>
+      <div id="modeSelect" class="mode-select" aria-hidden="true">
+        <button id="goTasks" class="btn btn-ghost">タスク一覧へ</button>
+        <button id="goCalendar" class="btn btn-primary">カレンダーへ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- アプリ画面 -->
+  <div id="app" class="view view-app" aria-hidden="true">
+    <header class="app-header">
+      <button id="headerUndo" class="btn header-undo" type="button">戻る</button>
+      <div class="app-header-center">
+        <button id="headerMonthPrev" class="header-month-nav" type="button" aria-label="前の月">＜</button>
+        <div id="headerMonthLabel" class="header-month-label"></div>
+        <button id="headerMonthNext" class="header-month-nav" type="button" aria-label="次の月">＞</button>
+        <div id="tasksHeaderTitle" class="tasks-header-title">タスク一覧</div>
+      </div>
+      <div class="app-header-right">
+        <button class="icon-btn" aria-label="検索">
+          <span class="icon-circle"></span>
+        </button>
+        <button class="icon-btn icon-view" aria-label="表示切替">
+          <span class="icon-view-label">19</span>
+        </button>
+        <button class="icon-btn icon-profile" aria-label="アカウント">
+          <span></span>
+        </button>
+        <button id="headerGoCalendar" class="btn header-go-calendar" type="button">タスク一覧へ</button>
+        <button id="headerWeekPrev" class="btn header-week-nav" type="button">前の週</button>
+        <button id="headerWeekNext" class="btn header-week-nav" type="button">次の週</button>
+        <button id="menuBtn" class="icon-btn icon-menu" aria-label="メニュー">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <!-- 既存の週移動・ビュー切替ボタン（ロジック用 / UI上は非表示にする） -->
+      <div class="header-legacy" aria-hidden="true">
+        <button id="prevWeek" class="btn btn-ghost" aria-label="前の週">＜</button>
+        <button id="today" class="btn btn-ghost">今週</button>
+        <button id="nextWeek" class="btn btn-ghost" aria-label="次の週">＞</button>
+        <div id="currentRange" class="range"></div>
+        <div class="view-switch" role="tablist" aria-label="ビュー切替">
+          <button id="viewMonth" class="btn btn-ghost" role="tab" aria-selected="false">月</button>
+          <button id="viewWeek" class="btn btn-ghost" role="tab" aria-selected="true">週</button>
+          <button id="viewDay" class="btn btn-ghost" role="tab" aria-selected="false">日</button>
+        </div>
+        <span class="brand">Monotone Calendar</span>
+      </div>
+    </header>
+
+    <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+
+    <div class="app-body">
+      <aside class="sidebar" aria-label="サイドバー">
+        <div class="nav-views" aria-label="表示期間">
+          <button class="nav-view-item" data-view="day">日</button>
+          <button class="nav-view-item is-active" data-view="week">週</button>
+          <button class="nav-view-item" data-view="month">月</button>
+        </div>
+
+        <div class="mini-cal" aria-label="ミニカレンダー">
+          <div class="mini-cal-header">
+            <button id="miniPrev" class="btn btn-ghost" aria-label="前の月">＜</button>
+            <div id="miniMonthLabel" class="mini-month"></div>
+            <button id="miniNext" class="btn btn-ghost" aria-label="次の月">＞</button>
+          </div>
+          <div class="mini-grid" id="miniGrid"></div>
+        </div>
+
+        <div class="cal-list" aria-label="カレンダー一覧">
+          <div class="cal-list-title">カレンダー</div>
+          <label class="cal-item">
+            <input type="checkbox" value="personal" checked /> 個人
+          </label>
+          <label class="cal-item">
+            <input type="checkbox" value="team" checked /> チーム
+          </label>
+          <label class="cal-item">
+            <input type="checkbox" value="external" checked /> 外部
+          </label>
+        </div>
+      </aside>
+
+      <main class="calendar" aria-label="メインカレンダー" id="calendarMain">
+        <div id="loading" class="loading">読み込み中...</div>
+        <div class="week-header" id="weekHeader"></div>
+        <div class="week-grid" id="weekGrid" tabindex="0" aria-label="週の時間グリッド"></div>
+      </main>
+
+      <main class="tasks-main" aria-label="タスク一覧" id="tasksMain" style="display:none;">
+        <div class="tasks-header">タスク一覧</div>
+
+        <div class="tasks-group">
+          <div class="tasks-group-title">TODAY</div>
+          <div id="tasksTodayList" class="tasks-list"></div>
+        </div>
+
+        <div class="tasks-group">
+          <div class="tasks-group-title">期日遅れ</div>
+          <div id="tasksOverdueList" class="tasks-list"></div>
+        </div>
+
+        <div class="tasks-group">
+          <div class="tasks-group-title">これから</div>
+          <div id="tasksUpcomingList" class="tasks-list"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 新規予定モーダル -->
+  <div id="modalOverlay" class="modal-overlay" aria-hidden="true"></div>
+  <div id="eventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-header">
+      <h2 id="modalTitle">新規予定</h2>
+      <button id="modalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
+    </div>
+    <form id="eventForm" class="modal-body">
+      <label class="field">
+        <span>タイトル</span>
+        <input type="text" id="titleInput" required placeholder="予定名" />
+      </label>
+      <div class="row">
+        <label class="field">
+          <span>開始</span>
+          <input type="datetime-local" id="startInput" required />
+        </label>
+        <label class="field">
+          <span>終了</span>
+          <input type="datetime-local" id="endInput" required />
+        </label>
+      </div>
+      <label class="field">
+        <span>カレンダー</span>
+        <select id="calendarInput">
+          <option value="personal">個人</option>
+          <option value="team">チーム</option>
+          <option value="external">外部</option>
+        </select>
+      </label>
+      <div class="modal-footer">
+        <button type="button" id="modalCancel" class="btn">キャンセル</button>
+        <button type="submit" class="btn btn-primary">追加</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="scripts/app.js"></script>
+</body>
+</html>

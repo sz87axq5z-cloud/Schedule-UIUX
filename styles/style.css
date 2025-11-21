@@ -1,0 +1,227 @@
+:root{
+  --bg:#FFF;
+  --fg:#000;
+  --g-100:#111; --g-200:#222; --g-300:#333; --g-400:#444; --g-500:#555; --g-600:#666; --g-700:#777; --g-800:#888; --g-900:#999; --g-a:#AAA; --g-b:#BBB; --g-c:#CCC; --g-d:#DDD; --g-e:#EEE;
+  --panel:#FAFAFA; --border:#DDD;
+  --shadow:0 8px 24px rgba(0,0,0,0.15); --shadow-soft:0 4px 14px rgba(0,0,0,0.12);
+  --radius:12px; --radius-sm:8px;
+  /* Mobile-first sizes */
+  --cell-h:40px;  /* 1h height */
+  --time-col-w:56px; /* time column */
+}
+
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; height:100%; background:var(--bg); color:var(--fg); font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; font-size:14px; max-width:100%; overflow-x:hidden; }
+button,input,select{ font:inherit; color:inherit; }
+a{ color:inherit; }
+
+/* 共通ボタン */
+.btn{ border:1px solid var(--g-400); background:#FFF; color:#000; padding:10px 12px; border-radius:10px; cursor:pointer; min-height:40px; }
+.btn:hover{ background:var(--g-d); }
+.btn:focus-visible{ outline:2px solid var(--g-700); outline-offset:2px; }
+.btn-ghost{ border:1px solid var(--border); background:#FFF; }
+.btn-ghost:hover{ background:var(--g-e); }
+.btn-google{ border:1.5px solid #000; background:#FFF; font-weight:600; }
+.btn-primary{ border-color:#000; background:#000; color:#FFF; }
+.btn-primary:hover{ background:#222; }
+
+/* ビューの切替 */
+.view{ display:none; }
+.view[aria-hidden="false"]{ display:block; }
+
+/* ログイン */
+.view-login{ display:grid; place-items:center; height:100vh; padding:24px; }
+.login-card{ width:min(480px, 92vw); background:#FFF; border:1px solid var(--g-c); border-radius:var(--radius); padding:24px; box-shadow:var(--shadow-soft); }
+.login-card h1{ margin:0 0 8px; font-size:16px; }
+.login-card .desc{ color:var(--g-600); margin:0 0 16px; font-size:12px; }
+.mode-select{ margin-top:16px; display:none; flex-direction:column; gap:8px; }
+
+/* ヘッダー（Googleカレンダー風・モノトーン） */
+.app-header{ position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--border); background:#FFF; gap:8px; width:100%; box-sizing:border-box; }
+.icon-btn{ border:none; background:transparent; padding:6px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.icon-btn:focus-visible{ outline:2px solid var(--g-700); outline-offset:2px; }
+.icon-menu{ flex-shrink:0; display:inline-flex; flex-direction:column; gap:3px; }
+.icon-menu span{ width:16px; height:2px; background:#000; border-radius:999px; }
+.app-header-center{ flex:1 1 auto; display:flex; justify-content:center; align-items:center; gap:4px; }
+.header-month-label{ font-weight:600; font-size:14px; }
+.header-month{ border:none; background:transparent; display:inline-flex; align-items:center; gap:4px; cursor:pointer; padding:4px 8px; border-radius:16px; }
+.header-month:hover{ background:var(--g-e); }
+.icon-chevron{ display:inline-block; width:8px; height:8px; border-right:1.5px solid #000; border-bottom:1.5px solid #000; transform:rotate(45deg); margin-top:2px; }
+.tasks-header-title{ display:none; }
+.app-header-right{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.icon-circle{ width:16px; height:16px; border-radius:999px; border:1.5px solid #000; }
+.icon-view-label{ display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:999px; border:1px solid #000; font-size:11px; font-weight:600; }
+.icon-profile span{ width:24px; height:24px; border-radius:999px; border:1.5px solid #000; display:block; }
+
+.header-go-calendar{ display:none; padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
+.app-header-right.mode-tasks .icon-btn{ display:none; }
+.app-header-right.mode-tasks .header-go-calendar{ display:inline-flex; }
+.header-undo{ padding:6px 10px; font-size:12px; }
+
+/* 月ビューのヘッダーナビ（＜ 11月 ＞） */
+.header-month-nav{
+  display:none;
+  border:none;
+  background:transparent;
+  padding:4px 6px;
+  cursor:pointer;
+  font-size:14px;
+}
+body.month-view .header-month-nav{ display:inline-flex; }
+body.month-view .header-month-label{ margin:0 4px; }
+body.month-view .app-header-right .icon-btn:not(.icon-menu){ display:none; }
+
+/* 週ビューのヘッダー（前の週 / 次の週） */
+.header-week-nav{ display:none; padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
+body.week-view .app-header-right .icon-btn:not(.icon-menu){ display:none; }
+body.week-view .app-header-right .header-week-nav{ display:inline-flex; }
+/* タスク一覧モード中は週ナビを隠す */
+body.week-view .app-header-right.mode-tasks .header-week-nav{ display:none; }
+
+/* 日ビューでも◯アイコンは非表示にして、右上はタスク/カレンダー切替+前日/翌日だけにする */
+body.day-view .app-header-right .icon-btn:not(.icon-menu){ display:none; }
+body.day-view .app-header-right .header-week-nav{ display:inline-flex; }
+
+/* タスク一覧ページでは年月ラベルをヘッダー全体の中央に固定 */
+body.tasks-mode .app-header{ position:sticky; }
+body.tasks-mode .app-header-center{ position:relative; }
+body.tasks-mode #headerMonthLabel{ display:none; }
+body.tasks-mode .header-month-nav{ display:none; }
+body.tasks-mode #tasksHeaderTitle{
+  display:block;
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-weight:600;
+}
+body.tasks-mode .icon-menu{ display:none; }
+body.tasks-mode .header-week-nav{ display:none !important; }
+
+/* 旧ヘッダー群はロジック用として保持しつつUIから隠す */
+.header-legacy{ display:none; }
+.view-switch{ display:flex; gap:6px; margin-right:8px; }
+.view-switch .btn[aria-selected="true"]{ background:#000; color:#FFF; border-color:#000; }
+
+/* レイアウト: モバイル=1カラム（カレンダーを上、サイドバーはハンバーガーメニュー内） */
+.app-body{ display:flex; flex-direction:column; min-height:calc(100vh - 56px); max-width:100%; overflow-x:hidden; }
+.calendar{ order:1; }
+.sidebar{ order:2; border-left:1px solid var(--border); background:var(--panel); padding:12px; display:flex; flex-direction:column; gap:16px; position:fixed; top:0; right:0; bottom:0; width:80vw; max-width:320px; transform:translateX(100%); transition:transform .18s ease-out, box-shadow .18s ease-out; z-index:20; height:100vh; overflow:auto; }
+.sidebar-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.35); opacity:0; pointer-events:none; transition:opacity .18s ease-out; z-index:15; }
+body.sidebar-open .sidebar{ transform:translateX(0); box-shadow:var(--shadow); }
+body.sidebar-open .sidebar-overlay{ opacity:1; pointer-events:auto; }
+
+/* ハンバーガーメニュー内: 表示期間切替 */
+.nav-views{ background:#FFF; border:1px solid var(--g-d); border-radius:var(--radius); padding:8px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.nav-view-item{ border:none; background:transparent; text-align:left; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:space-between; }
+.nav-view-item:hover{ background:var(--g-e); }
+.nav-view-item.is-active{ background:#000; color:#FFF; }
+
+/* ミニカレンダー */
+.mini-cal{ background:#FFF; border:1px solid var(--g-d); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); max-width:100%; }
+.mini-cal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.mini-month{ font-weight:700; }
+.mini-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.mini-cell{ aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; border:1px solid var(--g-e); border-radius:6px; font-size:11px; color:#000; background:#FFF; }
+.mini-cell.muted{ color:var(--g-700); background:#FAFAFA; }
+.mini-cell.today{ border-color:#000; font-weight:700; }
+.mini-cell:hover{ background:var(--g-d); cursor:pointer; }
+
+/* カレンダー一覧 */
+.cal-list{ background:#FFF; border:1px solid var(--g-d); border-radius:var(--radius); padding:12px; box-shadow:var(--shadow); max-width:100%; }
+.cal-list-title{ font-weight:700; margin-bottom:8px; }
+.cal-item{ display:flex; align-items:center; gap:8px; padding:6px 4px; font-size:13px; }
+.cal-item input{ width:16px; height:16px; }
+
+/* メインカレンダー */
+.calendar{ position:relative; overflow:auto; overflow-x:hidden; height:calc(100vh - 56px); }
+.loading{ padding:12px; color:var(--g-700); }
+.week-header{ display:grid; grid-template-columns:var(--time-col-w) repeat(7, 1fr); border-bottom:1px solid var(--border); background:#FFF; position:sticky; top:0; z-index:6; }
+.week-header .cell{ padding:10px 6px; border-right:1px solid var(--border); }
+.week-header .cell:last-child{ border-right:none; }
+.week-header .dow{ font-weight:700; font-size:12px; }
+.week-header .date{ color:var(--g-700); font-size:11px; }
+
+.week-grid{ position:relative; display:grid; grid-template-columns:var(--time-col-w) repeat(7,1fr); height:calc(var(--cell-h) * 24); width:100%; }
+.week-header{ width:100%; }
+.time-col, .day-col{ min-width:0; }
+.time-col{ border-right:1px solid var(--border); background:#FFF; position:sticky; left:0; z-index:5; box-shadow:inset -1px 0 0 var(--border); }
+.time-col .time{ height:var(--cell-h); border-top:1px solid var(--g-e); color:#000; padding-right:6px; display:flex; align-items:flex-start; justify-content:flex-end; font-size:9.5px; }
+.day-col{ position:relative; border-right:1px solid var(--border); background:#FFF; }
+.day-col:last-child{ border-right:none; }
+.day-col .hour{ position:relative; height:var(--cell-h); border-top:1px solid var(--g-e); }
+.day-col .hour.half::after{ content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:var(--g-e); }
+
+.selection{ position:absolute; background:var(--g-d); border:1px solid var(--g-600); opacity:.5; pointer-events:none; border-radius:6px; }
+
+.event{ position:absolute; background:var(--g-e); color:#000; border:1px solid var(--g-600); border-radius:8px; padding:4px 6px; overflow:hidden; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+.event .title{ font-weight:700; font-size:12px; margin-bottom:2px; }
+.event .meta{ font-size:10px; color:#111; }
+
+/* タスク一覧ビュー（予定ベース） */
+.tasks-main{ position:relative; overflow:auto; overflow-x:hidden; height:calc(100vh - 56px); padding:12px; background:#F7F7F7; }
+.tasks-header{ font-weight:700; font-size:14px; margin-bottom:12px; }
+.tasks-group{ margin-bottom:12px; }
+.tasks-group-title{ font-weight:600; font-size:12px; margin-bottom:4px; color:var(--g-700); }
+.tasks-list{ display:flex; flex-direction:column; gap:8px; }
+.task-item{ background:#FFF; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12px; display:flex; flex-direction:column; gap:2px; }
+.task-item-title{ font-weight:600; }
+.task-item-meta{ font-size:11px; color:var(--g-700); }
+.task-empty{ font-size:12px; color:var(--g-700); }
+
+/* 月ビュー */
+.month-header-row{ display:grid; grid-template-columns:repeat(7,1fr); }
+.month-header-row .mh-cell{ padding:10px 8px; border-right:1px solid var(--border); font-weight:700; }
+.month-header-row .mh-cell:last-child{ border-right:none; }
+.month-grid{ display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:1fr; border-top:1px solid var(--border); }
+.month-cell{ position:relative; border-right:1px solid var(--border); border-bottom:1px solid var(--border); background:#FFF; padding:6px; overflow:hidden; }
+.month-cell.muted{ color:var(--g-700); }
+.mc-date{ font-weight:700; margin-bottom:4px; font-size:11px; }
+.mc-ev{ background:var(--g-e); border:1px solid var(--g-600); border-radius:6px; padding:2px 6px; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mc-more{ color:#000; font-size:11px; }
+
+/* モーダル */
+.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; z-index:25; }
+.modal-overlay[aria-hidden="false"]{ display:block; }
+.modal{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(560px, 92vw); background:#FFF; border:1px solid var(--g-400); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,0.3); display:none; z-index:30; }
+.modal[aria-hidden="false"]{ display:block; }
+.modal-header{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--g-d); }
+.modal-body{ padding:16px; display:flex; flex-direction:column; gap:12px; }
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field input, .field select{ border:1px solid var(--g-c); border-radius:8px; padding:8px 10px; background:#FFF; }
+.row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width: 640px){
+  .row{ grid-template-columns:1fr; }
+}
+.modal-footer{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+
+/* フォーカス可視化 */
+:focus-visible{ outline:2px solid var(--g-700); outline-offset:2px; }
+
+/* 小さめ画面 */
+/* Desktop enhancements */
+@media (min-width: 960px){
+  .app-body{ display:grid; grid-template-columns:280px 1fr; }
+  .sidebar{ order:initial; position:sticky; top:57px; height:calc(100vh - 57px); overflow:auto; padding:16px; gap:24px; width:auto; max-width:none; transform:none; box-shadow:none; }
+  .sidebar-overlay{ display:none; }
+  .calendar{ height:calc(100vh - 57px); }
+  .time-col .time{ font-size:11px; }
+  .month-grid{ grid-auto-rows:minmax(112px, 1fr); }
+  .app-header .brand{ display:inline; max-width:unset; }
+}
+
+/* 月ビュー時はカレンダー全体に月グリッドを広げる */
+body.month-view .week-grid{ height:100%; grid-template-columns:repeat(7,1fr); }
+body.month-view .time-col{ display:none; }
+body.month-view .week-header{ grid-template-columns:repeat(7,1fr); }
+body.month-view .week-header > div:first-child{ display:none; }
+
+/* 文字選択抑制（ドラッグ選択時） */
+.noselect{
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  user-select:none;
+}
+
+/* ログイン -> アプリ切替のフォールバック */
+body.logged-in #login{ display:none !important; }
+body.logged-in #app{ display:block !important; }
