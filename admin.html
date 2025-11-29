@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理者用スケジュール</title>
+  <link rel="stylesheet" href="styles/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <button type="button" onclick="location.href='index.html'" class="btn header-undo">ユーザー画面へ</button>
+    <div class="app-header-center">
+      <div class="header-month-label">管理者ダッシュボード</div>
+    </div>
+    <div class="app-header-right"></div>
+  </header>
+
+  <main class="tasks-main" id="adminMain">
+    <div class="tasks-header">片付けスケジュール（管理者）</div>
+
+    <div class="admin-tabs" role="tablist" aria-label="表示切替">
+      <button id="adminTabAll" class="admin-tab is-active" role="tab" aria-selected="true" data-tab-target="all">全体</button>
+      <button id="adminTabCustomer" class="admin-tab" role="tab" aria-selected="false" data-tab-target="customer">顧客別</button>
+      <button id="adminTabDay" class="admin-tab" role="tab" aria-selected="false" data-tab-target="day">日別</button>
+    </div>
+
+    <div class="tasks-group" data-tab="all">
+      <div id="adminVisual" class="admin-visual"></div>
+      <div id="adminAllList" class="tasks-list"></div>
+    </div>
+
+    <div class="tasks-group" data-tab="customer" style="display:none;">
+      <div class="admin-filter-row">
+        <input type="text" id="customerSearchInput" placeholder="顧客名で検索" />
+      </div>
+      <div id="adminByCustomerList"></div>
+    </div>
+
+    <div class="tasks-group" data-tab="day" style="display:none;">
+      <div class="admin-filter-row">
+        <label class="admin-sort-label">
+          日付順
+          <select id="daySortSelect">
+            <option value="asc">昇順</option>
+            <option value="desc">降順</option>
+          </select>
+        </label>
+        <label class="admin-sort-label">
+          期間
+          <input type="date" id="dayFrom" />
+          <span>〜</span>
+          <input type="date" id="dayTo" />
+        </label>
+      </div>
+      <div id="adminDayList"></div>
+    </div>
+  </main>
+
+  <script src="scripts/data.js"></script>
+  <script src="scripts/admin.js"></script>
+</body>
+</html>

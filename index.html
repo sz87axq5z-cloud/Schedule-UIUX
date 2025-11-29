@@ -17,6 +17,9 @@
         <button id="goTasks" class="btn btn-ghost">タスク一覧へ</button>
         <button id="goCalendar" class="btn btn-primary">カレンダーへ</button>
       </div>
+      <p class="desc" style="margin-top:16px; font-size:11px;">
+        管理者として確認する場合は <a href="admin.html">管理者画面はこちら</a>
+      </p>
     </div>
   </div>
 
@@ -74,7 +77,6 @@
           <button class="nav-view-item is-active" data-view="week">週</button>
           <button class="nav-view-item" data-view="month">月</button>
         </div>
-
         <div class="mini-cal" aria-label="ミニカレンダー">
           <div class="mini-cal-header">
             <button id="miniPrev" class="btn btn-ghost" aria-label="前の月">＜</button>
@@ -82,19 +84,6 @@
             <button id="miniNext" class="btn btn-ghost" aria-label="次の月">＞</button>
           </div>
           <div class="mini-grid" id="miniGrid"></div>
-        </div>
-
-        <div class="cal-list" aria-label="カレンダー一覧">
-          <div class="cal-list-title">カレンダー</div>
-          <label class="cal-item">
-            <input type="checkbox" value="personal" checked /> 個人
-          </label>
-          <label class="cal-item">
-            <input type="checkbox" value="team" checked /> チーム
-          </label>
-          <label class="cal-item">
-            <input type="checkbox" value="external" checked /> 外部
-          </label>
         </div>
       </aside>
 
@@ -106,6 +95,11 @@
 
       <main class="tasks-main" aria-label="タスク一覧" id="tasksMain" style="display:none;">
         <div class="tasks-header">タスク一覧</div>
+        <div class="tasks-status-control" aria-label="ステータス">
+          <button type="button" class="tasks-status-btn" data-status="done">完了</button>
+          <button type="button" class="tasks-status-btn" data-status="warning">注意</button>
+          <button type="button" class="tasks-status-btn" data-status="late">遅延</button>
+        </div>
 
         <div class="tasks-group">
           <div class="tasks-group-title">TODAY</div>
@@ -130,7 +124,9 @@
   <div id="eventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
     <div class="modal-header">
       <h2 id="modalTitle">新規予定</h2>
-      <button id="modalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
+      <div class="modal-header-actions">
+        <button id="modalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
+      </div>
     </div>
     <form id="eventForm" class="modal-body">
       <label class="field">
@@ -140,19 +136,28 @@
       <div class="row">
         <label class="field">
           <span>開始</span>
-          <input type="datetime-local" id="startInput" required />
+          <input type="date" id="startDateInput" required />
+          <select id="startTimeInput" required></select>
         </label>
         <label class="field">
           <span>終了</span>
-          <input type="datetime-local" id="endInput" required />
+          <input type="date" id="endDateInput" required />
+          <select id="endTimeInput" required></select>
         </label>
       </div>
-      <label class="field">
+      <label class="field field-calendar">
         <span>カレンダー</span>
         <select id="calendarInput">
           <option value="personal">個人</option>
           <option value="team">チーム</option>
           <option value="external">外部</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>ステータス</span>
+        <select id="statusInput">
+          <option value="before">片づけ前</option>
+          <option value="done">片づけ完了</option>
         </select>
       </label>
       <div class="modal-footer">
@@ -162,6 +167,7 @@
     </form>
   </div>
 
+  <script src="scripts/data.js"></script>
   <script src="scripts/app.js"></script>
 </body>
 </html>

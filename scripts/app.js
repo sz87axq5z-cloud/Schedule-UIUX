@@ -17,17 +17,15 @@ const state = {
   view: 'week', // 'month' | 'week' | 'day'
 };
 
-// ---------- ダミーデータ ----------
-const events = [
-  // ISO 文字列で格納
-  { id: uid(), title: "朝会", start: setDateTimeISO(new Date(), 1, 9, 0), end: setDateTimeISO(new Date(), 1, 9, 30), calendar: "team" },
-  { id: uid(), title: "資料作成", start: setDateTimeISO(new Date(), 2, 10, 0), end: setDateTimeISO(new Date(), 2, 12, 0), calendar: "personal" },
-  { id: uid(), title: "顧客MTG", start: setDateTimeISO(new Date(), 2, 10, 30), end: setDateTimeISO(new Date(), 2, 11, 30), calendar: "external" },
-  { id: uid(), title: "1on1", start: setDateTimeISO(new Date(), 4, 14, 0), end: setDateTimeISO(new Date(), 4, 14, 45), calendar: "team" },
-  { id: uid(), title: "レビュー", start: setDateTimeISO(new Date(), 4, 14, 30), end: setDateTimeISO(new Date(), 4, 15, 0), calendar: "team" },
-  // 2025/11/20 の 14:00-17:00 に固定で入れるダミー予定
-  { id: uid(), title: "ダミーイベント(14-17)", start: new Date(2025, 10, 20, 14, 0).toISOString(), end: new Date(2025, 10, 20, 17, 0).toISOString(), calendar: "personal" },
-];
+let editingEventId = null;
+let editingUserId = null;
+
+// ---------- ダミーデータ（共通） ----------
+// data.js で定義された window.sharedEvents / window.sharedUsers を元に、
+// ユーザー側で利用する配列を生成する
+const events = (window.sharedEvents || []).map(ev => ({ ...ev }));
+const userStore = window.sharedUsers || [];
+const currentUserId = userStore.length ? userStore[0].id : (events[0] && events[0].userId) || null;
 
 // ---------- 要素 ----------
 const $login = byId("login");
@@ -48,6 +46,7 @@ const $tasksMain = byId("tasksMain");
 const $tasksTodayList = byId("tasksTodayList");
 const $tasksOverdueList = byId("tasksOverdueList");
 const $tasksUpcomingList = byId("tasksUpcomingList");
+const $tasksStatusButtons = Array.from(document.querySelectorAll('.tasks-status-btn'));
 const $weekHeader = byId("weekHeader");
 const $weekGrid = byId("weekGrid");
 const $loading = byId("loading");
@@ -68,9 +67,12 @@ const $modalClose = byId("modalClose");
 const $modalCancel = byId("modalCancel");
 const $eventForm = byId("eventForm");
 const $titleInput = byId("titleInput");
-const $startInput = byId("startInput");
-const $endInput = byId("endInput");
+const $startDateInput = byId("startDateInput");
+const $startTimeInput = byId("startTimeInput");
+const $endDateInput = byId("endDateInput");
+const $endTimeInput = byId("endTimeInput");
 const $calendarInput = byId("calendarInput");
+const $statusInput = byId("statusInput");
 
 // ブラウザ履歴制御用フラグ
 let suppressHistory = false;
@@ -221,6 +223,8 @@ window.addEventListener("DOMContentLoaded", () => {
     addEvent();
   });
 
+  // 編集ボタンは廃止（イベントタップ時に直接編集モードで開く）
+
   // ヘッダー右側の「19」ボタンで今日に戻る
   if ($todayIconBtn) {
     $todayIconBtn.addEventListener('click', () => {
@@ -260,6 +264,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // 初期画面（ログイン）を履歴に追加
   pushScreenState('login');
+
+  setupTasksStatusControl();
+
+  // 時刻セレクト(15分刻み)を生成
+  populateTimeSelect($startTimeInput);
+  populateTimeSelect($endTimeInput);
 
   // ブラウザバック対応
   window.addEventListener('popstate', (e) => {
@@ -609,6 +619,13 @@ function drawEvents(days){
         <div class="title">${escapeHtml(ev.title)}</div>
         <div class="meta">${fmtTime(ev._start)} - ${fmtTime(ev._end)}・${labelForCalendar(ev.calendar)}</div>
       `;
+      // 既存イベント上ではドラッグ選択を開始しない
+      el.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+      });
+      el.addEventListener('click', () => {
+        openEventDetail(ev);
+      });
       $weekGrid.querySelector(`.day-col[data-day-index="${dayIndex}"]`).appendChild(el);
     });
   });
@@ -684,10 +701,31 @@ function updateSelection(){
 
 // ---------- モーダル ----------
 function openModal({title, start, end}){
+  // 新規作成モードとして初期化
+  editingEventId = null;
+  editingUserId = currentUserId;
+  $titleInput.removeAttribute('disabled');
+  $startDateInput.removeAttribute('disabled');
+  $startTimeInput.removeAttribute('disabled');
+  $endDateInput.removeAttribute('disabled');
+  $endTimeInput.removeAttribute('disabled');
+  $calendarInput.removeAttribute('disabled');
+  if ($statusInput) $statusInput.removeAttribute('disabled');
+
+  const submitBtn = $eventForm.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.style.display = '';
+    submitBtn.textContent = '追加';
+  }
+
+  const modalTitleEl = document.getElementById('modalTitle');
+  if (modalTitleEl) modalTitleEl.textContent = '新規予定';
+
   $titleInput.value = title || "";
-  $startInput.value = toLocalInputValue(start);
-  $endInput.value = toLocalInputValue(end);
+  setDateTimeInputs(start, $startDateInput, $startTimeInput);
+  setDateTimeInputs(end, $endDateInput, $endTimeInput);
   $calendarInput.value = "personal";
+  if ($statusInput) $statusInput.value = 'before';
   $modal.setAttribute("aria-hidden","false");
   $overlay.setAttribute("aria-hidden","false");
   $titleInput.focus();
@@ -700,20 +738,37 @@ function closeModal(){
 
 function addEvent(){
   const title = $titleInput.value.trim();
-  const start = new Date($startInput.value);
-  const end = new Date($endInput.value);
+  const start = buildDateFromInputs($startDateInput, $startTimeInput);
+  const end = buildDateFromInputs($endDateInput, $endTimeInput);
   const calendar = $calendarInput.value;
+  const status = $statusInput ? $statusInput.value : null;
 
   if(!title || !(start < end)) return;
-
-  events.push({
-    id: uid(),
-    title,
-    start: start.toISOString(),
-    end: end.toISOString(),
-    calendar
-  });
+  if (editingEventId) {
+    const target = events.find(ev => ev.id === editingEventId);
+    if (target) {
+      target.title = title;
+      target.start = start.toISOString();
+      target.end = end.toISOString();
+      target.calendar = calendar;
+    }
+    if (editingUserId && status) {
+      setUserStatus(editingUserId, status);
+    }
+  } else {
+    events.push({
+      id: uid(),
+      title,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      calendar
+    });
+    if (currentUserId && status) {
+      setUserStatus(currentUserId, status);
+    }
+  }
   closeModal();
+  editingEventId = null;
   renderWeekView();
 }
 
@@ -823,13 +878,155 @@ function simulateLoading(cb){
   }, 400);
 }
 
+// ---------- タスク一覧: ステータス同期 ----------
+function getUserById(id){
+  if (!id) return null;
+  return userStore.find(u => u.id === id) || null;
+}
+
+function getCurrentUserStatus(){
+  const user = getUserById(currentUserId);
+  return (user && user.status) || 'before';
+}
+
+function setCurrentUserStatus(status){
+  setUserStatus(currentUserId, status);
+}
+
+function setupTasksStatusControl(){
+  if (!$tasksStatusButtons.length || !currentUserId) return;
+
+  const applyActive = () => {
+    const cur = getCurrentUserStatus();
+    $tasksStatusButtons.forEach(btn => {
+      const st = btn.dataset.status;
+      btn.classList.toggle('is-active', st === cur);
+    });
+  };
+
+  applyActive();
+
+  $tasksStatusButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const st = btn.dataset.status;
+      if (!st) return;
+      setCurrentUserStatus(st);
+      applyActive();
+    });
+  });
+}
+
+function setUserStatus(userId, status){
+  const user = getUserById(userId);
+  if (!user) return;
+  user.status = status;
+
+  // ユーザーステータスを localStorage に保存して、管理画面と共有
+  try {
+    const key = 'userStatusOverrides';
+    const raw = window.localStorage && window.localStorage.getItem(key);
+    const map = raw ? JSON.parse(raw) : {};
+    map[userId] = status;
+    window.localStorage && window.localStorage.setItem(key, JSON.stringify(map));
+  } catch (e) {
+    // 保存に失敗してもアプリ本体の動作は続行
+  }
+}
+
 // ---------- ヘルパ ----------
+// date+time input 用ヘルパー
+function setDateTimeInputs(d, $date, $time){
+  const local = new Date(d);
+  if ($date) {
+    const y = local.getFullYear();
+    const m = String(local.getMonth()+1).padStart(2,'0');
+    const day = String(local.getDate()).padStart(2,'0');
+    $date.value = `${y}-${m}-${day}`;
+  }
+  if ($time) {
+    const h = String(local.getHours()).padStart(2,'0');
+    const mm = String(local.getMinutes()).padStart(2,'0');
+    $time.value = `${h}:${mm}`;
+  }
+}
+
+function buildDateFromInputs($date, $time){
+  if (!$date || !$time || !$date.value || !$time.value) return new Date(NaN);
+  const [y,m,d] = $date.value.split('-').map(v => parseInt(v,10));
+  const [hh,mm] = $time.value.split(':').map(v => parseInt(v,10));
+  const dt = new Date(y, (m||1)-1, d||1, hh||0, mm||0, 0, 0);
+  // 念のため15分刻みに丸め
+  const mins = dt.getHours()*60 + dt.getMinutes();
+  const snapped = quantize(mins, 15);
+  dt.setHours(Math.floor(snapped/60), snapped%60, 0, 0);
+  return dt;
+}
+
+function populateTimeSelect($sel){
+  if (!$sel) return;
+  $sel.innerHTML = '';
+  for (let h = 0; h < 24; h++){
+    for (let m = 0; m < 60; m += 15){
+      const hh = String(h).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      const opt = document.createElement('option');
+      opt.value = `${hh}:${mm}`;
+      opt.textContent = `${hh}:${mm}`;
+      $sel.appendChild(opt);
+    }
+  }
+}
+
 function labelForCalendar(key){
   return key === "personal" ? "個人" : key === "team" ? "チーム" : "外部";
 }
 function escapeHtml(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function isSameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
 function fmtTime(d){ return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function openEventDetail(ev){
+  try {
+    const start = new Date(ev._start || ev.start);
+    const end = new Date(ev._end || ev.end);
+
+    editingEventId = ev.id;
+    editingUserId = ev.userId || currentUserId;
+
+    // 詳細モード用の値セット
+    $titleInput.value = ev.title || '';
+    setDateTimeInputs(start, $startDateInput, $startTimeInput);
+    setDateTimeInputs(end, $endDateInput, $endTimeInput);
+    if (ev.calendar) {
+      $calendarInput.value = ev.calendar;
+    }
+    if ($statusInput) {
+      const st = getUserById(editingUserId)?.status || 'before';
+      $statusInput.value = st;
+    }
+
+    // 最初から編集モードで開く
+    $titleInput.removeAttribute('disabled');
+    $startDateInput.removeAttribute('disabled');
+    $startTimeInput.removeAttribute('disabled');
+    $endDateInput.removeAttribute('disabled');
+    $endTimeInput.removeAttribute('disabled');
+    $calendarInput.removeAttribute('disabled');
+    if ($statusInput) $statusInput.removeAttribute('disabled');
+
+    const submitBtn = $eventForm.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.style.display = '';
+      submitBtn.textContent = '更新';
+    }
+
+    const modalTitleEl = document.getElementById('modalTitle');
+    if (modalTitleEl) modalTitleEl.textContent = '予定を編集';
+
+    $modal.setAttribute('aria-hidden','false');
+    $overlay.setAttribute('aria-hidden','false');
+  } catch (e) {
+    console.error('openEventDetail failed', e);
+  }
+}
 function varNum(name){
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   // 例: "48px" -> 48
@@ -1033,11 +1230,14 @@ function renderTaskGroupInto(container, list){
     const d = String(start.getDate()).padStart(2,'0');
     const dateLabel = `${y}/${m}/${d}`;
     const timeLabel = `${fmtTime(start)} - ${fmtTime(end)}`;
-    const calLabel = labelForCalendar(ev.calendar);
-    meta.textContent = `${dateLabel} ${timeLabel} ・ ${calLabel}`;
+    // タスク一覧ではカレンダー種別（個人・チーム・外部）は表示しない
+    meta.textContent = `${dateLabel} ${timeLabel}`;
 
     item.appendChild(title);
     item.appendChild(meta);
+    item.addEventListener('click', () => {
+      openEventDetail(ev);
+    });
     container.appendChild(item);
   });
 }
