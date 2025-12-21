@@ -20,12 +20,15 @@ const state = {
 let editingEventId = null;
 let editingUserId = null;
 
-// ---------- ダミーデータ（共通） ----------
-// data.js で定義された window.sharedEvents / window.sharedUsers を元に、
-// ユーザー側で利用する配列を生成する
-const events = (window.sharedEvents || []).map(ev => ({ ...ev }));
+// ---------- データ（APIから取得） ----------
+// APIから取得したスケジュールを格納
+let events = [];
 const userStore = window.sharedUsers || [];
-const currentUserId = userStore.length ? userStore[0].id : (events[0] && events[0].userId) || null;
+let currentUserId = null;
+let loggedInUser = null;
+
+// APIモード（trueの場合はバックエンドAPIを使用）
+const USE_API = true;
 
 // ---------- 要素 ----------
 const $login = byId("login");
@@ -73,6 +76,11 @@ const $endDateInput = byId("endDateInput");
 const $endTimeInput = byId("endTimeInput");
 const $calendarInput = byId("calendarInput");
 const $statusInput = byId("statusInput");
+const $calendarFab = byId("calendarFab");
+const $tasksFab = byId("tasksFab");
+const $modalDelete = byId("modalDelete");
+const $modalLoading = byId("modalLoading");
+const $modalLoadingText = byId("modalLoadingText");
 
 // ブラウザ履歴制御用フラグ
 let suppressHistory = false;
@@ -92,24 +100,157 @@ const $viewWeek = byId('viewWeek');
 const $viewDay = byId('viewDay');
 
 // ---------- 初期化 ----------
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
+  // APIモードの場合、ログイン状態を確認
+  let isLoggedIn = false;
+  let savedState = null;
+
+  if (USE_API) {
+    // ログイン済みかつ保存された画面状態がある場合、先にログイン画面を非表示にする
+    savedState = restoreScreenState();
+    const session = localStorage.getItem('schedule_app_session');
+    if (session && savedState && (savedState.screen === 'calendar' || savedState.screen === 'tasks')) {
+      // 先にアプリ画面を表示（ログイン画面を見せない）
+      if ($login) {
+        $login.style.display = "none";
+        $login.setAttribute("aria-hidden", "true");
+      }
+      if ($app) {
+        $app.style.display = "block";
+        $app.setAttribute("aria-hidden", "false");
+      }
+      document.body.classList.add("logged-in");
+    }
+
+    const user = await window.scheduleAPI.checkLoginStatus();
+    if (user) {
+      loggedInUser = user;
+      currentUserId = user.id;
+      isLoggedIn = true;
+      // スケジュールを取得（Googleカレンダーから同期）
+      await loadSchedulesFromAPI(true);
+    } else {
+      // ログインに失敗した場合、ログイン画面に戻す
+      savedState = null;
+      if ($login) {
+        $login.style.display = "block";
+        $login.setAttribute("aria-hidden", "false");
+      }
+      if ($app) {
+        $app.style.display = "none";
+        $app.setAttribute("aria-hidden", "true");
+      }
+      document.body.classList.remove("logged-in");
+    }
+  } else {
+    // ダミーデータを使用
+    events = (window.sharedEvents || []).map(ev => ({ ...ev }));
+    currentUserId = userStore.length ? userStore[0].id : (events[0] && events[0].userId) || null;
+  }
+
   simulateLoading(() => {
     renderMiniCalendar();
     renderWeekView();
+
+    // ログイン済みの場合、役割に応じて遷移
+    if (isLoggedIn) {
+      if (loggedInUser.role === 'teacher') {
+        // 講師は管理画面へリダイレクト
+        window.location.href = 'admin.html';
+      } else {
+        // 生徒の場合、保存された画面状態を復元
+        if (savedState && (savedState.screen === 'calendar' || savedState.screen === 'tasks')) {
+          // 保存された画面を直接表示
+          if (savedState.current) {
+            state.current = new Date(savedState.current);
+          }
+          switchToApp();
+          if (savedState.view) setView(savedState.view);
+          if (savedState.screen === 'tasks') {
+            showMainMode('tasks');
+            renderTasksFromEvents();
+          } else {
+            showMainMode('calendar');
+          }
+        } else {
+          // 保存された状態がない場合はモード選択画面へ
+          if ($loginBtn) $loginBtn.style.display = "none";
+          if ($modeSelect) {
+            $modeSelect.style.display = "flex";
+            $modeSelect.setAttribute("aria-hidden", "false");
+          }
+        }
+        // 管理者画面リンクを非表示
+        const $adminLink = document.getElementById('adminLinkText');
+        if ($adminLink) $adminLink.style.display = "none";
+      }
+    }
   });
 
-  // 疑似ログイン
+  // Googleログイン
+  const $loginOverlay = byId("loginOverlay");
+
   if ($loginBtn) {
-    $loginBtn.addEventListener("click", () => {
-      $loginBtn.style.display = "none";
-      if ($modeSelect) {
-        $modeSelect.style.display = "flex";
-        $modeSelect.setAttribute("aria-hidden", "false");
+    $loginBtn.addEventListener("click", async () => {
+      if (USE_API) {
+        // 本物のGoogleログイン
+        $loginBtn.textContent = 'ログイン中...';
+        $loginBtn.disabled = true;
+
+        // ポップアップが閉じたらオーバーレイを表示するコールバック
+        const showOverlay = () => {
+          if ($loginOverlay) {
+            $loginOverlay.style.display = 'flex';
+          }
+        };
+
+        const user = await window.scheduleAPI.startGoogleLogin(showOverlay);
+
+        // ユーザー情報取得後にオーバーレイを非表示
+        if ($loginOverlay) {
+          $loginOverlay.style.display = 'none';
+        }
+        $loginBtn.textContent = 'Googleでログイン';
+        $loginBtn.disabled = false;
+
+        if (user) {
+          loggedInUser = user;
+          currentUserId = user.id;
+          // スケジュールを取得（Googleカレンダーから同期）
+          await loadSchedulesFromAPI(true);
+
+          // 役割に応じて遷移
+          if (user.role === 'teacher') {
+            // 講師は管理画面へリダイレクト
+            window.location.href = 'admin.html';
+          } else {
+            // 生徒はモード選択へ
+            $loginBtn.style.display = "none";
+            if ($modeSelect) {
+              $modeSelect.style.display = "flex";
+              $modeSelect.setAttribute("aria-hidden", "false");
+            } else {
+              switchToApp();
+            }
+            // 管理者画面リンクを非表示
+            const $adminLink = document.getElementById('adminLinkText');
+            if ($adminLink) $adminLink.style.display = "none";
+            pushScreenState('mode-select');
+          }
+        } else {
+          alert('ログインに失敗しました');
+        }
       } else {
-        // フォールバックで直接アプリへ
-        switchToApp();
+        // 疑似ログイン
+        $loginBtn.style.display = "none";
+        if ($modeSelect) {
+          $modeSelect.style.display = "flex";
+          $modeSelect.setAttribute("aria-hidden", "false");
+        } else {
+          switchToApp();
+        }
+        pushScreenState('mode-select');
       }
-      pushScreenState('mode-select');
     });
   } else {
     console.warn("loginBtn not found");
@@ -218,10 +359,19 @@ window.addEventListener("DOMContentLoaded", () => {
   $modalClose.addEventListener("click", closeModal);
   $modalCancel.addEventListener("click", closeModal);
   $overlay.addEventListener("click", closeModal);
-  $eventForm.addEventListener("submit", (e) => {
+  $eventForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    addEvent();
+    await addEvent();
   });
+
+  // 削除ボタン
+  if ($modalDelete) {
+    $modalDelete.addEventListener("click", async () => {
+      if (!editingEventId) return;
+      if (!confirm('この予定を削除しますか？')) return;
+      await deleteEvent(editingEventId);
+    });
+  }
 
   // 編集ボタンは廃止（イベントタップ時に直接編集モードで開く）
 
@@ -270,6 +420,40 @@ window.addEventListener("DOMContentLoaded", () => {
   // 時刻セレクト(15分刻み)を生成
   populateTimeSelect($startTimeInput);
   populateTimeSelect($endTimeInput);
+
+  // カレンダー画面右下の「＋」ボタンから新規予定を追加
+  if ($calendarFab) {
+    $calendarFab.addEventListener('click', () => {
+      const now = new Date();
+      const start = new Date(now);
+      const end = new Date(now);
+      end.setHours(end.getHours() + 1);
+      openModal({ title: "", start, end });
+    });
+  }
+
+  // タスク一覧画面右下の「＋」ボタンから新規予定を追加
+  if ($tasksFab) {
+    $tasksFab.addEventListener('click', () => {
+      const now = new Date();
+      const start = new Date(now);
+      const end = new Date(now);
+      end.setHours(end.getHours() + 1);
+      openModal({ title: "", start, end });
+    });
+  }
+
+  // タスク一覧画面内の「タスクを追加」ボタン
+  const $tasksAddBtn = byId('tasksAddBtn');
+  if ($tasksAddBtn) {
+    $tasksAddBtn.addEventListener('click', () => {
+      const now = new Date();
+      const start = new Date(now);
+      const end = new Date(now);
+      end.setHours(end.getHours() + 1);
+      openModal({ title: "", start, end });
+    });
+  }
 
   // ブラウザバック対応
   window.addEventListener('popstate', (e) => {
@@ -716,7 +900,13 @@ function openModal({title, start, end}){
   if (submitBtn) {
     submitBtn.style.display = '';
     submitBtn.textContent = '追加';
+    submitBtn.disabled = false;
   }
+
+  // 新規作成時は削除ボタンを非表示
+  if ($modalDelete) $modalDelete.style.display = 'none';
+  // ローディングを非表示
+  if ($modalLoading) $modalLoading.style.display = 'none';
 
   const modalTitleEl = document.getElementById('modalTitle');
   if (modalTitleEl) modalTitleEl.textContent = '新規予定';
@@ -736,7 +926,7 @@ function closeModal(){
   $overlay.setAttribute("aria-hidden","true");
 }
 
-function addEvent(){
+async function addEvent(){
   const title = $titleInput.value.trim();
   const start = buildDateFromInputs($startDateInput, $startTimeInput);
   const end = buildDateFromInputs($endDateInput, $endTimeInput);
@@ -744,32 +934,206 @@ function addEvent(){
   const status = $statusInput ? $statusInput.value : null;
 
   if(!title || !(start < end)) return;
-  if (editingEventId) {
-    const target = events.find(ev => ev.id === editingEventId);
-    if (target) {
-      target.title = title;
-      target.start = start.toISOString();
-      target.end = end.toISOString();
-      target.calendar = calendar;
-    }
-    if (editingUserId && status) {
-      setUserStatus(editingUserId, status);
-    }
-  } else {
-    events.push({
-      id: uid(),
-      title,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      calendar
-    });
-    if (currentUserId && status) {
-      setUserStatus(currentUserId, status);
+
+  // ローディング表示と二重タップ防止
+  const submitBtn = $eventForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  if ($modalDelete) $modalDelete.disabled = true;
+  if ($modalLoading) {
+    $modalLoading.style.display = 'flex';
+    if ($modalLoadingText) {
+      $modalLoadingText.textContent = editingEventId ? '更新中...' : '登録中...';
     }
   }
+
+  if (USE_API) {
+    // APIを使用してスケジュールを保存
+    try {
+      if (editingEventId) {
+        // 更新
+        const result = await window.scheduleAPI.updateSchedule(editingEventId, {
+          title,
+          startTime: start.toISOString(),
+          endTime: end.toISOString()
+        });
+        if (result.success) {
+          await loadSchedulesFromAPI();
+        }
+      } else {
+        // 新規作成
+        const scheduleData = {
+          title,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          studentId: currentUserId,
+          studentName: loggedInUser ? loggedInUser.name : null
+        };
+        const result = await window.scheduleAPI.createSchedule(scheduleData);
+        if (result.success) {
+          await loadSchedulesFromAPI();
+          // カレンダー同期結果を表示
+          if (result.calendarSync) {
+            const syncInfo = [];
+            if (result.calendarSync.student?.success) {
+              syncInfo.push('生徒カレンダー');
+            }
+            if (result.calendarSync.teacher?.success) {
+              syncInfo.push('講師カレンダー');
+            }
+            if (syncInfo.length > 0) {
+              console.log(`Googleカレンダーに同期: ${syncInfo.join(', ')}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('スケジュール保存エラー:', error);
+      alert('スケジュールの保存に失敗しました');
+      // エラー時はローディングを非表示にしてボタンを有効化
+      if ($modalLoading) $modalLoading.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
+      if ($modalDelete) $modalDelete.disabled = false;
+      return;
+    }
+  } else {
+    // ローカルモード
+    if (editingEventId) {
+      const target = events.find(ev => ev.id === editingEventId);
+      if (target) {
+        target.title = title;
+        target.start = start.toISOString();
+        target.end = end.toISOString();
+        target.calendar = calendar;
+      }
+      if (editingUserId && status) {
+        setUserStatus(editingUserId, status);
+      }
+    } else {
+      events.push({
+        id: uid(),
+        title,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        calendar
+      });
+      if (currentUserId && status) {
+        setUserStatus(currentUserId, status);
+      }
+    }
+  }
+
+  // ローディング非表示
+  if ($modalLoading) $modalLoading.style.display = 'none';
+  if (submitBtn) submitBtn.disabled = false;
+  if ($modalDelete) $modalDelete.disabled = false;
+
   closeModal();
   editingEventId = null;
   renderWeekView();
+  // タスク一覧表示中の場合は再描画
+  if ($tasksMain && $tasksMain.style.display === 'block') {
+    renderTasksFromEvents();
+  }
+}
+
+/**
+ * スケジュールを削除
+ */
+async function deleteEvent(eventId) {
+  if (!eventId) return;
+
+  // ローディング表示と二重タップ防止
+  const submitBtn = $eventForm.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  if ($modalDelete) $modalDelete.disabled = true;
+  if ($modalLoading) {
+    $modalLoading.style.display = 'flex';
+    if ($modalLoadingText) {
+      $modalLoadingText.textContent = '削除中...';
+    }
+  }
+
+  if (USE_API) {
+    try {
+      const result = await window.scheduleAPI.deleteSchedule(eventId);
+      if (result.success) {
+        await loadSchedulesFromAPI();
+      } else {
+        alert('削除に失敗しました');
+        // エラー時はローディングを非表示にしてボタンを有効化
+        if ($modalLoading) $modalLoading.style.display = 'none';
+        if (submitBtn) submitBtn.disabled = false;
+        if ($modalDelete) $modalDelete.disabled = false;
+        return;
+      }
+    } catch (error) {
+      console.error('スケジュール削除エラー:', error);
+      alert('削除に失敗しました');
+      // エラー時はローディングを非表示にしてボタンを有効化
+      if ($modalLoading) $modalLoading.style.display = 'none';
+      if (submitBtn) submitBtn.disabled = false;
+      if ($modalDelete) $modalDelete.disabled = false;
+      return;
+    }
+  } else {
+    // ローカルモード
+    const idx = events.findIndex(ev => ev.id === eventId);
+    if (idx >= 0) {
+      events.splice(idx, 1);
+    }
+  }
+
+  // ローディング非表示
+  if ($modalLoading) $modalLoading.style.display = 'none';
+  if (submitBtn) submitBtn.disabled = false;
+  if ($modalDelete) $modalDelete.disabled = false;
+
+  closeModal();
+  editingEventId = null;
+  renderWeekView();
+  // タスク一覧表示中の場合は再描画
+  if ($tasksMain && $tasksMain.style.display === 'block') {
+    renderTasksFromEvents();
+  }
+}
+
+/**
+ * APIからスケジュールを取得してevents配列を更新
+ * @param {boolean} syncFirst - trueの場合、先にGoogleカレンダーから同期する
+ */
+async function loadSchedulesFromAPI(syncFirst = false) {
+  try {
+    // Googleカレンダーから同期（ログイン済みの場合のみ）
+    if (syncFirst && currentUserId) {
+      try {
+        console.log('Googleカレンダーから同期中...');
+        const syncResult = await window.scheduleAPI.syncFromGoogleCalendar(currentUserId);
+        if (syncResult.success) {
+          console.log('同期完了:', syncResult.results);
+        }
+      } catch (syncError) {
+        console.error('Googleカレンダー同期エラー:', syncError);
+        // 同期に失敗しても続行
+      }
+    }
+
+    const schedules = await window.scheduleAPI.getSchedules();
+    // APIのフォーマットをフロントエンドのフォーマットに変換
+    events = schedules.map(s => ({
+      id: s.id,
+      userId: s.studentId,
+      userName: s.studentName,
+      title: s.title,
+      start: s.startTime,
+      end: s.endTime,
+      calendar: 'personal', // デフォルト
+      status: s.status
+    }));
+    console.log(`${events.length}件のスケジュールを読み込みました`);
+  } catch (error) {
+    console.error('スケジュール取得エラー:', error);
+    events = [];
+  }
 }
 
 // ---------- ミニカレンダー ----------
@@ -847,15 +1211,15 @@ function setView(v){
     document.body.classList.add('day-view');
     // 日ビューでは1時間あたりの高さを大きめにして1日分を強調
     document.documentElement.style.setProperty('--cell-h', '96px');
-    if ($headerWeekPrev) $headerWeekPrev.textContent = '前の日';
-    if ($headerWeekNext) $headerWeekNext.textContent = '次の日';
+    if ($headerWeekPrev) $headerWeekPrev.textContent = '＜';
+    if ($headerWeekNext) $headerWeekNext.textContent = '＞';
   } else {
     document.body.classList.remove('day-view');
     // それ以外のビューではデフォルトの高さに戻す
     document.documentElement.style.setProperty('--cell-h', '40px');
     if (v === 'week') {
-      if ($headerWeekPrev) $headerWeekPrev.textContent = '前の週';
-      if ($headerWeekNext) $headerWeekNext.textContent = '次の週';
+      if ($headerWeekPrev) $headerWeekPrev.textContent = '＜';
+      if ($headerWeekNext) $headerWeekNext.textContent = '＞';
     }
   }
   // ビュー切替時にはハンバーガーメニューを必ず閉じる
@@ -1016,7 +1380,13 @@ function openEventDetail(ev){
     if (submitBtn) {
       submitBtn.style.display = '';
       submitBtn.textContent = '更新';
+      submitBtn.disabled = false;
     }
+
+    // 編集時は削除ボタンを表示
+    if ($modalDelete) $modalDelete.style.display = 'block';
+    // ローディングを非表示
+    if ($modalLoading) $modalLoading.style.display = 'none';
 
     const modalTitleEl = document.getElementById('modalTitle');
     if (modalTitleEl) modalTitleEl.textContent = '予定を編集';
@@ -1136,8 +1506,42 @@ function pushScreenState(screen){
       current: state.current ? state.current.toISOString() : null,
     };
     history.pushState(stateForHistory, "");
+    // localStorageにも保存（リロード時の復元用）
+    saveScreenState(screen);
   } catch (e) {
     console.warn("pushState failed", e);
+  }
+}
+
+// 画面状態をlocalStorageに保存
+function saveScreenState(screen) {
+  try {
+    const screenState = {
+      screen,
+      view: state.view,
+      current: state.current ? state.current.toISOString() : null,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('schedule_app_screen_state', JSON.stringify(screenState));
+  } catch (e) {
+    // 保存失敗は無視
+  }
+}
+
+// 画面状態をlocalStorageから復元
+function restoreScreenState() {
+  try {
+    const raw = localStorage.getItem('schedule_app_screen_state');
+    if (!raw) return null;
+    const screenState = JSON.parse(raw);
+    // 24時間以上古い場合は無視
+    if (Date.now() - screenState.timestamp > 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('schedule_app_screen_state');
+      return null;
+    }
+    return screenState;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -1197,12 +1601,12 @@ function renderTasksFromEvents(){
     }
   });
 
-  renderTaskGroupInto($tasksTodayList, todayEvents);
-  renderTaskGroupInto($tasksOverdueList, overdueEvents);
-  renderTaskGroupInto($tasksUpcomingList, upcomingEvents);
+  renderTaskGroupInto($tasksTodayList, todayEvents, false);
+  renderTaskGroupInto($tasksOverdueList, overdueEvents, true);
+  renderTaskGroupInto($tasksUpcomingList, upcomingEvents, false);
 }
 
-function renderTaskGroupInto(container, list){
+function renderTaskGroupInto(container, list, isOverdue = false){
   container.innerHTML = '';
   if (!list.length){
     const empty = document.createElement('div');
@@ -1217,7 +1621,7 @@ function renderTaskGroupInto(container, list){
     const end = new Date(ev.end);
 
     const item = document.createElement('div');
-    item.className = 'task-item';
+    item.className = 'task-item' + (isOverdue ? ' task-overdue' : '');
 
     const title = document.createElement('div');
     title.className = 'task-item-title';

@@ -1,0 +1,22 @@
+# .gcloudignore - Cloud Buildでアップロードしないファイル
+# 注意: .gitignoreとは別に管理
+
+# 依存関係（ビルド時にインストールするため除外）
+node_modules/
+
+# ログファイル
+*.log
+
+# macOS
+.DS_Store
+
+# ローカル環境変数（Cloud Runでは環境変数として設定）
+.env
+.env.local
+
+# Git関連
+.git/
+.gitignore
+
+# firebase-service-account.json は含める（除外しない）
+# これによりCloud Buildでアップロードされる

@@ -2,3 +2,11 @@ node_modules/
 .DS_Store
 *.log
 netlify.toml.backup
+
+# 環境変数（秘密情報を含むので絶対にGitにコミットしない）
+.env
+.env.local
+
+# Firebase秘密鍵（絶対に公開しない）
+firebase-service-account.json
+*-service-account.json

@@ -3,50 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>モノトーン スケジュール</title>
-  <link rel="stylesheet" href="styles/style.css" />
+  <title>スケジュール管理アプリ</title>
+  <link rel="stylesheet" href="styles/style.css?v=13" />
 </head>
 <body>
   <!-- ログイン画面 -->
   <div id="login" class="view view-login" aria-hidden="false">
     <div class="login-card" role="dialog" aria-labelledby="login-title">
-      <h1 id="login-title">スケジュール連携</h1>
-      <p class="desc">モノトーンUIで予定を管理。下のボタンで疑似ログインします。</p>
+      <h1 id="login-title">スケジュール管理アプリ</h1>
       <button id="loginBtn" class="btn btn-google" aria-label="Googleでログイン">Googleでログイン</button>
       <div id="modeSelect" class="mode-select" aria-hidden="true">
         <button id="goTasks" class="btn btn-ghost">タスク一覧へ</button>
         <button id="goCalendar" class="btn btn-primary">カレンダーへ</button>
       </div>
-      <p class="desc" style="margin-top:16px; font-size:11px;">
+      <p id="adminLinkText" class="desc" style="margin-top:16px; font-size:11px;">
         管理者として確認する場合は <a href="admin.html">管理者画面はこちら</a>
       </p>
+      <p class="desc" style="margin-top:24px; font-size:10px; color:#999;">
+        <a href="privacy.html" style="color:#666;">プライバシーポリシー</a>
+      </p>
+    </div>
+    <!-- ログイン処理中オーバーレイ -->
+    <div id="loginOverlay" class="login-overlay" style="display:none;">
+      <div class="login-overlay-content">
+        <div class="login-spinner"></div>
+        <p class="login-overlay-text">ログイン中...</p>
+      </div>
     </div>
   </div>
 
   <!-- アプリ画面 -->
   <div id="app" class="view view-app" aria-hidden="true">
-    <header class="app-header">
-      <button id="headerUndo" class="btn header-undo" type="button">戻る</button>
+    <header class="app-header user-header">
+      <button id="headerUndo" class="user-back-btn" type="button">←</button>
       <div class="app-header-center">
-        <button id="headerMonthPrev" class="header-month-nav" type="button" aria-label="前の月">＜</button>
-        <div id="headerMonthLabel" class="header-month-label"></div>
-        <button id="headerMonthNext" class="header-month-nav" type="button" aria-label="次の月">＞</button>
-        <div id="tasksHeaderTitle" class="tasks-header-title">タスク一覧</div>
+        <button id="headerWeekPrev" class="header-nav-sm header-week-nav" type="button">＜</button>
+        <button id="headerMonthPrev" class="header-nav-sm header-month-nav" type="button">＜</button>
+        <div id="headerMonthLabel" class="header-title-sm"></div>
+        <div id="tasksHeaderTitle" class="header-title-sm tasks-header-title">タスク一覧</div>
+        <button id="headerMonthNext" class="header-nav-sm header-month-nav" type="button">＞</button>
+        <button id="headerWeekNext" class="header-nav-sm header-week-nav" type="button">＞</button>
       </div>
       <div class="app-header-right">
-        <button class="icon-btn" aria-label="検索">
-          <span class="icon-circle"></span>
-        </button>
-        <button class="icon-btn icon-view" aria-label="表示切替">
-          <span class="icon-view-label">19</span>
-        </button>
-        <button class="icon-btn icon-profile" aria-label="アカウント">
-          <span></span>
-        </button>
-        <button id="headerGoCalendar" class="btn header-go-calendar" type="button">タスク一覧へ</button>
-        <button id="headerWeekPrev" class="btn header-week-nav" type="button">前の週</button>
-        <button id="headerWeekNext" class="btn header-week-nav" type="button">次の週</button>
-        <button id="menuBtn" class="icon-btn icon-menu" aria-label="メニュー">
+        <button id="headerGoCalendar" class="user-link-btn" type="button">タスク</button>
+        <button id="menuBtn" class="menu-hamburger" aria-label="メニュー">
           <span></span>
           <span></span>
           <span></span>
@@ -102,22 +102,29 @@
         </div>
 
         <div class="tasks-group">
-          <div class="tasks-group-title">TODAY</div>
+          <div class="tasks-group-title">📌 TODAY</div>
           <div id="tasksTodayList" class="tasks-list"></div>
         </div>
 
         <div class="tasks-group">
-          <div class="tasks-group-title">期日遅れ</div>
+          <div class="tasks-group-title">⚠️ 期日遅れ</div>
           <div id="tasksOverdueList" class="tasks-list"></div>
         </div>
 
         <div class="tasks-group">
-          <div class="tasks-group-title">これから</div>
+          <div class="tasks-group-title">📅 これから</div>
           <div id="tasksUpcomingList" class="tasks-list"></div>
         </div>
+
+        <button id="tasksAddBtn" class="tasks-add-btn" type="button">＋ タスクを追加</button>
       </main>
     </div>
   </div>
+
+  <!-- 右下の新規予定追加ボタン（ユーザーカレンダー用） -->
+  <button id="calendarFab" class="fab-ui" type="button" aria-label="新規予定を追加">＋</button>
+  <!-- タスク一覧ビュー用の新規予定追加ボタン -->
+  <button id="tasksFab" class="fab-ui" type="button" aria-label="新規予定を追加">＋</button>
 
   <!-- 新規予定モーダル -->
   <div id="modalOverlay" class="modal-overlay" aria-hidden="true"></div>
@@ -161,13 +168,23 @@
         </select>
       </label>
       <div class="modal-footer">
-        <button type="button" id="modalCancel" class="btn">キャンセル</button>
-        <button type="submit" class="btn btn-primary">追加</button>
+        <button type="button" id="modalDelete" class="btn btn-danger" style="display:none;">削除</button>
+        <div class="modal-footer-right">
+          <button type="button" id="modalCancel" class="btn">キャンセル</button>
+          <button type="submit" class="btn btn-primary">追加</button>
+        </div>
+      </div>
+      <div id="modalLoading" class="modal-loading" style="display:none;">
+        <div class="modal-loading-content">
+          <div class="spinner"></div>
+          <span id="modalLoadingText">登録中...</span>
+        </div>
       </div>
     </form>
   </div>
 
-  <script src="scripts/data.js"></script>
-  <script src="scripts/app.js"></script>
+  <script src="scripts/data.js?v=2"></script>
+  <script src="scripts/api.js?v=4"></script>
+  <script src="scripts/app.js?v=6"></script>
 </body>
 </html>

@@ -1,428 +1,513 @@
-(function(){
-  function getUserStatus(userId){
-    var users = (window.sharedUsers || []);
-    for (var i=0; i<users.length; i++){
-      if (users[i].id === userId) return users[i].status || 'done';
+/**
+ * 管理画面 - APIと連携して実際の生徒・スケジュールを管理
+ */
+
+// グローバル変数
+let adminUser = null;
+let allSchedules = [];
+let allUsers = [];
+
+// ログイン状態チェック（講師のみアクセス可能）
+async function checkAdminAccess() {
+  if (window.scheduleAPI) {
+    const user = await window.scheduleAPI.checkLoginStatus();
+    if (!user) {
+      window.location.href = 'index.html';
+      return false;
     }
-    return 'done';
+    if (user.role !== 'teacher') {
+      alert('この画面は講師専用です');
+      window.location.href = 'index.html';
+      return false;
+    }
+    adminUser = user;
+    window.adminUser = user;
+    return true;
   }
+  return false;
+}
 
-  function isSameDay(a, b){
-    return a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate();
-  }
-  function formatRange(ev){
-    var start = new Date(ev.start);
-    var end = new Date(ev.end);
-    var datePart = start.toLocaleDateString('ja-JP', { month:'2-digit', day:'2-digit' });
-    var timePart = start.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' }) +
-      ' - ' + end.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
-    return datePart + ' ' + timePart;
-  }
+// APIからデータを取得
+async function fetchAllData() {
+  console.log('[Admin] データ取得開始...');
+  try {
+    // スケジュールを取得
+    const schedules = await window.scheduleAPI.getSchedules();
+    console.log('[Admin] 取得したスケジュール:', schedules);
+    allSchedules = schedules.map(s => ({
+      id: s.id,
+      title: s.title,
+      start: s.startTime,
+      end: s.endTime,
+      userId: s.studentId,
+      userName: s.studentName || '未設定',
+      status: s.status
+    }));
 
-  function groupByUser(events){
-    var map = {};
-    events.forEach(function(ev){
-      var uid = ev.userId || 'unknown';
-      if (!map[uid]){
-        map[uid] = {
-          userId: uid,
-          userName: ev.userName || '不明なユーザー',
-          events: []
-        };
-      }
-      map[uid].events.push(ev);
+    // ユーザー一覧を取得
+    const usersResponse = await fetch('http://localhost:3001/api/auth/users', {
+      credentials: 'include'
     });
-    return Object.keys(map)
-      .map(function(k){ return map[k]; })
-      .sort(function(a,b){ return a.userName.localeCompare(b.userName, 'ja'); });
+    const usersData = await usersResponse.json();
+    if (usersData.success) {
+      allUsers = usersData.data.filter(u => u.role === 'student');
+    }
+
+    console.log(`スケジュール: ${allSchedules.length}件, 生徒: ${allUsers.length}名`);
+  } catch (error) {
+    console.error('データ取得エラー:', error);
+  }
+}
+
+// ユーティリティ関数
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+}
+
+function formatRange(ev) {
+  const start = new Date(ev.start);
+  const end = new Date(ev.end);
+  const datePart = start.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
+  const timePart = start.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) +
+    ' - ' + end.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  return datePart + ' ' + timePart;
+}
+
+function formatDateTime(date) {
+  return date.toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function groupByUser(events) {
+  const map = {};
+  events.forEach(ev => {
+    const uid = ev.userId || 'unknown';
+    if (!map[uid]) {
+      map[uid] = {
+        userId: uid,
+        userName: ev.userName || '不明なユーザー',
+        events: []
+      };
+    }
+    map[uid].events.push(ev);
+  });
+  return Object.keys(map)
+    .map(k => map[k])
+    .sort((a, b) => a.userName.localeCompare(b.userName, 'ja'));
+}
+
+// メイン描画関数
+function renderAdminEvents() {
+  const allList = document.getElementById('adminAllList');
+  const byCustomerContainer = document.getElementById('adminByCustomerList');
+  const dayContainer = document.getElementById('adminDayList');
+  const visualContainer = document.getElementById('adminVisual');
+  const customerSearchInput = document.getElementById('customerSearchInput');
+  const daySortSelect = document.getElementById('daySortSelect');
+  const dayFromInput = document.getElementById('dayFrom');
+  const dayToInput = document.getElementById('dayTo');
+
+  const customerQuery = customerSearchInput ? customerSearchInput.value.trim() : '';
+  const daySortOrder = daySortSelect ? daySortSelect.value : 'asc';
+  const dayFrom = dayFromInput && dayFromInput.value ? new Date(dayFromInput.value) : null;
+  const dayTo = dayToInput && dayToInput.value ? new Date(dayToInput.value) : null;
+
+  if (allList) allList.innerHTML = '';
+  if (byCustomerContainer) byCustomerContainer.innerHTML = '';
+  if (dayContainer) dayContainer.innerHTML = '';
+  if (visualContainer) visualContainer.innerHTML = '';
+
+  const events = allSchedules.slice();
+
+  if (!events.length) {
+    if (allList) {
+      const empty = document.createElement('div');
+      empty.className = 'task-empty';
+      empty.textContent = '登録されているスケジュールがありません';
+      allList.appendChild(empty);
+    }
+    return;
   }
 
-  function renderAdminEvents(){
-    var allList = document.getElementById('adminAllList');
-    var byCustomerContainer = document.getElementById('adminByCustomerList');
-    var dayContainer = document.getElementById('adminDayList');
-    var visualContainer = document.getElementById('adminVisual');
-    var customerSearchInput = document.getElementById('customerSearchInput');
-    var daySortSelect = document.getElementById('daySortSelect');
-    var dayFromInput = document.getElementById('dayFrom');
-    var dayToInput = document.getElementById('dayTo');
-    var events = (window.sharedEvents || []).slice();
+  // 全スケジュール（日程順）リスト
+  if (allList) {
+    events
+      .slice()
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .forEach(ev => {
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.style.cursor = 'pointer';
 
-    var customerQuery = customerSearchInput ? customerSearchInput.value.trim() : '';
-    var daySortOrder = daySortSelect ? daySortSelect.value : 'asc';
-    var dayFrom = dayFromInput && dayFromInput.value ? new Date(dayFromInput.value) : null;
-    var dayTo = dayToInput && dayToInput.value ? new Date(dayToInput.value) : null;
+        const title = document.createElement('div');
+        title.className = 'task-item-title';
+        title.textContent = ev.title;
 
-    if (allList) allList.innerHTML = '';
-    if (byCustomerContainer) byCustomerContainer.innerHTML = '';
-    if (dayContainer) dayContainer.innerHTML = '';
-    if (visualContainer) visualContainer.innerHTML = '';
+        const meta = document.createElement('div');
+        meta.className = 'task-item-meta';
+        meta.textContent = ev.userName + ' / ' + formatRange(ev);
 
-    // 終了時刻が過去 かつ ユーザーステータスが done の予定はダッシュボードから除外
-    var now = new Date();
-    events = events.filter(function(ev){
-      var end = new Date(ev.end);
-      var status = getUserStatus(ev.userId);
-      if (end < now && status === 'done') return false;
-      return true;
-    });
+        item.appendChild(title);
+        item.appendChild(meta);
 
-    if (!events.length){
-      if (allList){
-        var empty = document.createElement('div');
-        empty.className = 'task-empty';
-        empty.textContent = '登録されているスケジュールがありません';
-        allList.appendChild(empty);
+        // クリックで詳細表示
+        item.addEventListener('click', () => showScheduleDetail(ev));
+
+        allList.appendChild(item);
+      });
+  }
+
+  // ステータスカード（生徒別）
+  if (visualContainer) {
+    const today = new Date();
+
+    // 生徒ごとにスケジュールをグループ化
+    const userGroups = groupByUser(events);
+
+    userGroups.forEach(group => {
+      const userEvents = group.events;
+      const todayEvents = userEvents.filter(ev => isSameDay(new Date(ev.start), today));
+      const futureEvents = userEvents.filter(ev => new Date(ev.start) > today);
+
+      // 今日または今後の予定がある生徒のみ表示
+      if (todayEvents.length === 0 && futureEvents.length === 0) return;
+
+      let summary = '';
+      if (todayEvents.length > 0) {
+        const first = todayEvents.slice().sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+        const d = new Date(first.start);
+        const time = d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        summary = '本日 ' + time + ' ' + first.title;
+      } else if (futureEvents.length > 0) {
+        const first = futureEvents.slice().sort((a, b) => new Date(a.start) - new Date(b.start))[0];
+        const d = new Date(first.start);
+        summary = d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) + ' ' + first.title;
       }
+
+      // 色判定
+      const now = new Date();
+      const hasOverdue = userEvents.some(ev => new Date(ev.end) < now);
+      let colorClass = todayEvents.length > 0 ? 'status-before' : 'status-done';
+      if (hasOverdue) colorClass = 'status-overdue';
+
+      const card = document.createElement('div');
+      card.className = 'admin-status-card ' + colorClass;
+
+      const main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'admin-status-main';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'admin-status-name';
+      nameEl.textContent = group.userName;
+
+      const summaryEl = document.createElement('div');
+      summaryEl.className = 'admin-status-summary';
+      summaryEl.textContent = summary;
+
+      const dot = document.createElement('span');
+      dot.className = 'admin-status-dot';
+
+      main.appendChild(nameEl);
+      main.appendChild(summaryEl);
+      main.appendChild(dot);
+
+      const detail = document.createElement('div');
+      detail.className = 'admin-status-detail';
+
+      userEvents
+        .slice()
+        .sort((a, b) => new Date(a.start) - new Date(b.start))
+        .forEach(ev => {
+          const item = document.createElement('div');
+          item.className = 'task-item';
+          item.style.cursor = 'pointer';
+
+          const t = document.createElement('div');
+          t.className = 'task-item-title';
+          t.textContent = ev.title;
+
+          const m = document.createElement('div');
+          m.className = 'task-item-meta';
+          m.textContent = formatRange(ev);
+
+          item.appendChild(t);
+          item.appendChild(m);
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showScheduleDetail(ev);
+          });
+          detail.appendChild(item);
+        });
+
+      main.addEventListener('click', () => {
+        const isOpen = detail.getAttribute('data-open') === 'true';
+        detail.setAttribute('data-open', isOpen ? 'false' : 'true');
+        detail.style.display = isOpen ? 'none' : 'block';
+      });
+
+      detail.style.display = 'none';
+      detail.setAttribute('data-open', 'false');
+
+      card.appendChild(main);
+      card.appendChild(detail);
+      visualContainer.appendChild(card);
+    });
+  }
+
+  // 顧客別
+  if (byCustomerContainer) {
+    let userGroups = groupByUser(events);
+
+    if (customerQuery) {
+      const q = customerQuery.toLowerCase();
+      userGroups = userGroups.filter(group =>
+        (group.userName || '').toLowerCase().includes(q)
+      );
+    }
+
+    if (!userGroups.length) {
+      const emptyCustomer = document.createElement('div');
+      emptyCustomer.className = 'task-empty';
+      emptyCustomer.textContent = '該当する生徒がいません';
+      byCustomerContainer.appendChild(emptyCustomer);
       return;
     }
 
-    // 全スケジュール（日程順）リスト
-    if (allList){
-      events
-        .slice()
-        .sort(function(a,b){ return new Date(a.start) - new Date(b.start); })
-        .forEach(function(ev){
-          var item = document.createElement('div');
-          item.className = 'task-item';
+    userGroups.forEach(group => {
+      const section = document.createElement('div');
+      section.className = 'tasks-group';
 
-          var title = document.createElement('div');
+      const header = document.createElement('div');
+      header.className = 'tasks-group-title';
+      header.textContent = group.userName;
+
+      const list = document.createElement('div');
+      list.className = 'tasks-list';
+
+      group.events
+        .slice()
+        .sort((a, b) => new Date(a.start) - new Date(b.start))
+        .forEach(ev => {
+          const item = document.createElement('div');
+          item.className = 'task-item';
+          item.style.cursor = 'pointer';
+
+          const title = document.createElement('div');
           title.className = 'task-item-title';
           title.textContent = ev.title;
 
-          var meta = document.createElement('div');
+          const meta = document.createElement('div');
+          meta.className = 'task-item-meta';
+          meta.textContent = formatRange(ev);
+
+          item.appendChild(title);
+          item.appendChild(meta);
+          item.addEventListener('click', () => showScheduleDetail(ev));
+          list.appendChild(item);
+        });
+
+      section.appendChild(header);
+      section.appendChild(list);
+      byCustomerContainer.appendChild(section);
+    });
+  }
+
+  // 日別
+  if (dayContainer) {
+    const byDateForDay = {};
+    events.forEach(ev => {
+      const d = new Date(ev.start);
+      const key = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      if (!byDateForDay[key]) byDateForDay[key] = { date: d, events: [] };
+      byDateForDay[key].events.push(ev);
+    });
+
+    let dayBlocks = Object.keys(byDateForDay)
+      .map(k => byDateForDay[k])
+      .filter(block => {
+        if (dayFrom && block.date < dayFrom) return false;
+        if (dayTo) {
+          const endOfTo = new Date(dayTo.getFullYear(), dayTo.getMonth(), dayTo.getDate(), 23, 59, 59, 999);
+          if (block.date > endOfTo) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (daySortOrder === 'desc') return b.date - a.date;
+        return a.date - b.date;
+      });
+
+    dayBlocks.forEach(block => {
+      const section = document.createElement('div');
+      section.className = 'tasks-group';
+
+      const header = document.createElement('div');
+      header.className = 'tasks-group-title';
+      header.textContent = block.date.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
+
+      const list = document.createElement('div');
+      list.className = 'tasks-list';
+
+      block.events
+        .slice()
+        .sort((a, b) => new Date(a.start) - new Date(b.start))
+        .forEach(ev => {
+          const item = document.createElement('div');
+          item.className = 'task-item';
+          item.style.cursor = 'pointer';
+
+          const title = document.createElement('div');
+          title.className = 'task-item-title';
+          title.textContent = ev.title;
+
+          const meta = document.createElement('div');
           meta.className = 'task-item-meta';
           meta.textContent = ev.userName + ' / ' + formatRange(ev);
 
           item.appendChild(title);
           item.appendChild(meta);
-          allList.appendChild(item);
-        });
-    }
-
-    // ステータスカード（顧客別・コンパクト）
-    if (visualContainer){
-      var users = (window.sharedUsers || []).slice();
-
-      // ステータス順に並べる: before(片づけ前) -> done(片づけ完了)
-      var order = { before: 0, done: 1 };
-      users.sort(function(a,b){
-        var sa = order[a.status || 'done'];
-        var sb = order[b.status || 'done'];
-        if (sa !== sb) return sa - sb;
-        return a.name.localeCompare(b.name, 'ja');
-      });
-
-      var today = new Date();
-
-      users.forEach(function(user){
-        var userEvents = events.filter(function(ev){ return ev.userId === user.id; });
-        var todayEvents = userEvents.filter(function(ev){ return isSameDay(new Date(ev.start), today); });
-
-        // 要約テキスト（今日のスケジュール）。
-        // 今日の予定がない場合は何も表示しない。
-        var summary = '';
-        if (todayEvents.length > 0){
-          var first = todayEvents.slice().sort(function(a,b){ return new Date(a.start) - new Date(b.start); })[0];
-          var d = new Date(first.start);
-          var time = d.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit' });
-          summary = time + ' ' + first.title;
-        }
-
-        // 色判定
-        var now = new Date();
-        var hasOverdue = userEvents.some(function(ev){
-          var end = new Date(ev.end);
-          return end < now;
-        });
-        var userStatus = user.status || 'done';
-        var colorClass;
-        if (hasOverdue && userStatus !== 'done'){
-          // 予定時間が過ぎているのに「片づけ完了」になっていない
-          colorClass = 'status-overdue';
-        } else if (todayEvents.length > 0){
-          // 今日片づけ予定が入っている顧客
-          colorClass = 'status-before';
-        } else {
-          // それ以外は顧客ステータスに応じて
-          colorClass = 'status-' + userStatus;
-        }
-
-        // ステータスカードには赤(status-overdue)と黄(status-before)のみ表示する
-        if (colorClass !== 'status-overdue' && colorClass !== 'status-before'){
-          return;
-        }
-
-        var card = document.createElement('div');
-        card.className = 'admin-status-card ' + colorClass;
-
-        var main = document.createElement('button');
-        main.type = 'button';
-        main.className = 'admin-status-main';
-
-        var nameEl = document.createElement('div');
-        nameEl.className = 'admin-status-name';
-        nameEl.textContent = user.name;
-
-        var summaryEl = document.createElement('div');
-        summaryEl.className = 'admin-status-summary';
-        summaryEl.textContent = summary;
-
-        var dot = document.createElement('span');
-        dot.className = 'admin-status-dot';
-
-        main.appendChild(nameEl);
-        main.appendChild(summaryEl);
-        main.appendChild(dot);
-
-        var detail = document.createElement('div');
-        detail.className = 'admin-status-detail';
-
-        if (userEvents.length === 0){
-          var empty = document.createElement('div');
-          empty.className = 'task-empty';
-          empty.textContent = '登録されているスケジュールがありません';
-          detail.appendChild(empty);
-        } else {
-          userEvents
-            .slice()
-            .sort(function(a,b){ return new Date(a.start) - new Date(b.start); })
-            .forEach(function(ev){
-              var item = document.createElement('div');
-              item.className = 'task-item';
-
-              var t = document.createElement('div');
-              t.className = 'task-item-title';
-              t.textContent = ev.title;
-
-              var m = document.createElement('div');
-              m.className = 'task-item-meta';
-              m.textContent = formatRange(ev);
-
-              item.appendChild(t);
-              item.appendChild(m);
-              detail.appendChild(item);
-            });
-        }
-
-        main.addEventListener('click', function(){
-          var isOpen = detail.getAttribute('data-open') === 'true';
-          detail.setAttribute('data-open', isOpen ? 'false' : 'true');
-          detail.style.display = isOpen ? 'none' : 'block';
+          item.addEventListener('click', () => showScheduleDetail(ev));
+          list.appendChild(item);
         });
 
-        detail.style.display = 'none';
-        detail.setAttribute('data-open', 'false');
-
-        card.appendChild(main);
-        card.appendChild(detail);
-        visualContainer.appendChild(card);
-      });
-    }
-
-    // 顧客別
-    if (byCustomerContainer){
-      var userGroups = groupByUser(events);
-
-      if (customerQuery){
-        var q = customerQuery.toLowerCase();
-        userGroups = userGroups.filter(function(group){
-          return (group.userName || '').toLowerCase().indexOf(q) !== -1;
-        });
-      }
-
-      if (!userGroups.length){
-        var emptyCustomer = document.createElement('div');
-        emptyCustomer.className = 'task-empty';
-        emptyCustomer.textContent = '該当する顧客がいません';
-        byCustomerContainer.appendChild(emptyCustomer);
-        return;
-      }
-
-      userGroups.forEach(function(group){
-        var section = document.createElement('div');
-        section.className = 'tasks-group';
-
-        var header = document.createElement('div');
-        header.className = 'tasks-group-title';
-        header.textContent = group.userName;
-
-        var list = document.createElement('div');
-        list.className = 'tasks-list';
-
-        group.events
-          .slice()
-          .sort(function(a,b){ return new Date(a.start) - new Date(b.start); })
-          .forEach(function(ev){
-            var item = document.createElement('div');
-            item.className = 'task-item';
-
-            var title = document.createElement('div');
-            title.className = 'task-item-title';
-            title.textContent = ev.title;
-
-            var meta = document.createElement('div');
-            meta.className = 'task-item-meta';
-            meta.textContent = formatRange(ev);
-
-            item.appendChild(title);
-            item.appendChild(meta);
-            list.appendChild(item);
-          });
-
-        section.appendChild(header);
-        section.appendChild(list);
-        byCustomerContainer.appendChild(section);
-      });
-    }
-
-    // 日別（セクションごとに日付見出し+リスト）
-    if (dayContainer){
-      var byDateForDay = {};
-      events.forEach(function(ev){
-        var d = new Date(ev.start);
-        var key = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-        if (!byDateForDay[key]) byDateForDay[key] = { date: d, events: [] };
-        byDateForDay[key].events.push(ev);
-      });
-
-      var dayBlocks = Object.keys(byDateForDay)
-        .map(function(k){ return byDateForDay[k]; })
-        .filter(function(block){
-          if (dayFrom && block.date < dayFrom) return false;
-          if (dayTo){
-            // dayTo の日付の 23:59 までを含める
-            var endOfTo = new Date(dayTo.getFullYear(), dayTo.getMonth(), dayTo.getDate(), 23, 59, 59, 999);
-            if (block.date > endOfTo) return false;
-          }
-          return true;
-        })
-        .sort(function(a,b){
-          if (daySortOrder === 'desc'){
-            return b.date - a.date;
-          }
-          return a.date - b.date;
-        });
-
-      dayBlocks.forEach(function(block){
-        var section = document.createElement('div');
-        section.className = 'tasks-group';
-
-        var header = document.createElement('div');
-        header.className = 'tasks-group-title';
-        header.textContent = block.date.toLocaleDateString('ja-JP', { month:'2-digit', day:'2-digit', weekday:'short' });
-
-        var list = document.createElement('div');
-        list.className = 'tasks-list';
-
-        block.events
-          .slice()
-          .sort(function(a,b){ return new Date(a.start) - new Date(b.start); })
-          .forEach(function(ev){
-            var item = document.createElement('div');
-            item.className = 'task-item';
-
-            var title = document.createElement('div');
-            title.className = 'task-item-title';
-            title.textContent = ev.title;
-
-            var meta = document.createElement('div');
-            meta.className = 'task-item-meta';
-            meta.textContent = ev.userName + ' / ' + formatRange(ev);
-
-            item.appendChild(title);
-            item.appendChild(meta);
-            list.appendChild(item);
-          });
-
-        section.appendChild(header);
-        section.appendChild(list);
-        dayContainer.appendChild(section);
-      });
-    }
-  }
-
-  function setupTabs(){
-    var tabAll = document.getElementById('adminTabAll');
-    var tabCustomer = document.getElementById('adminTabCustomer');
-    var tabDay = document.getElementById('adminTabDay');
-    var groupAll = document.querySelector('[data-tab="all"]');
-    var groupCustomer = document.querySelector('[data-tab="customer"]');
-    var groupDay = document.querySelector('[data-tab="day"]');
-    var customerSearchInput = document.getElementById('customerSearchInput');
-    var daySortSelect = document.getElementById('daySortSelect');
-    var dayFromInput = document.getElementById('dayFrom');
-    var dayToInput = document.getElementById('dayTo');
-
-    function activate(target){
-      var showAll = target === 'all';
-      var showCustomer = target === 'customer';
-      var showDay = target === 'day';
-
-      if (groupAll) groupAll.style.display = showAll ? '' : 'none';
-      if (groupCustomer) groupCustomer.style.display = showCustomer ? '' : 'none';
-      if (groupDay) groupDay.style.display = showDay ? '' : 'none';
-
-      if (tabAll){
-        tabAll.classList.toggle('is-active', showAll);
-        tabAll.setAttribute('aria-selected', showAll ? 'true' : 'false');
-      }
-      if (tabCustomer){
-        tabCustomer.classList.toggle('is-active', showCustomer);
-        tabCustomer.setAttribute('aria-selected', showCustomer ? 'true' : 'false');
-      }
-      if (tabDay){
-        tabDay.classList.toggle('is-active', showDay);
-        tabDay.setAttribute('aria-selected', showDay ? 'true' : 'false');
-      }
-    }
-
-    if (tabAll){
-      tabAll.addEventListener('click', function(){ activate('all'); });
-    }
-    if (tabCustomer){
-      tabCustomer.addEventListener('click', function(){ activate('customer'); });
-    }
-    if (tabDay){
-      tabDay.addEventListener('click', function(){ activate('day'); });
-    }
-
-    // 顧客検索: 入力するたびに顧客別リストを再描画
-    if (customerSearchInput){
-      customerSearchInput.addEventListener('input', function(){
-        renderAdminEvents();
-      });
-    }
-
-    // 日別ソート: セレクト変更時に日別リストを再描画
-    if (daySortSelect){
-      daySortSelect.addEventListener('change', function(){
-        renderAdminEvents();
-      });
-    }
-
-    if (dayFromInput){
-      dayFromInput.addEventListener('change', function(){
-        renderAdminEvents();
-      });
-    }
-
-    if (dayToInput){
-      dayToInput.addEventListener('change', function(){
-        renderAdminEvents();
-      });
-    }
-  }
-
-  if (document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){
-      renderAdminEvents();
-      setupTabs();
+      section.appendChild(header);
+      section.appendChild(list);
+      dayContainer.appendChild(section);
     });
-  } else {
-    renderAdminEvents();
-    setupTabs();
   }
-})();
+}
+
+// スケジュール詳細表示
+function showScheduleDetail(ev) {
+  const popup = document.querySelector('.task-popup-ui');
+  const overlay = document.querySelector('.task-popup-overlay-ui');
+  const titleEl = popup.querySelector('.task-popup-title-ui');
+  const metaEl = popup.querySelector('.task-popup-meta-ui');
+  const bodyEl = popup.querySelector('.task-popup-body-ui');
+
+  titleEl.textContent = ev.title;
+
+  const start = new Date(ev.start);
+  const end = new Date(ev.end);
+  metaEl.textContent = `${ev.userName} / ${formatDateTime(start)} 〜 ${formatDateTime(end)}`;
+
+  // 削除ボタンを追加（既存のものがあれば削除）
+  let deleteBtn = bodyEl.querySelector('.delete-schedule-btn');
+  if (!deleteBtn) {
+    deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'delete-schedule-btn';
+    deleteBtn.textContent = 'このスケジュールを削除';
+    deleteBtn.style.cssText = 'margin-top: 16px; padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;';
+    bodyEl.appendChild(deleteBtn);
+  }
+
+  deleteBtn.onclick = async () => {
+    if (confirm(`「${ev.title}」を削除しますか？`)) {
+      try {
+        await window.scheduleAPI.deleteSchedule(ev.id);
+        alert('削除しました');
+        closePopup();
+        await fetchAllData();
+        renderAdminEvents();
+      } catch (error) {
+        alert('削除に失敗しました');
+      }
+    }
+  };
+
+  popup.setAttribute('data-ui-open', 'true');
+  overlay.setAttribute('data-ui-open', 'true');
+}
+
+function closePopup() {
+  const popup = document.querySelector('.task-popup-ui');
+  const overlay = document.querySelector('.task-popup-overlay-ui');
+  popup.setAttribute('data-ui-open', 'false');
+  overlay.setAttribute('data-ui-open', 'false');
+}
+
+// タブ設定
+function setupTabs() {
+  const tabAll = document.getElementById('adminTabAll');
+  const tabCustomer = document.getElementById('adminTabCustomer');
+  const tabDay = document.getElementById('adminTabDay');
+  const groupAll = document.querySelector('[data-tab="all"]');
+  const groupCustomer = document.querySelector('[data-tab="customer"]');
+  const groupDay = document.querySelector('[data-tab="day"]');
+  const customerSearchInput = document.getElementById('customerSearchInput');
+  const daySortSelect = document.getElementById('daySortSelect');
+  const dayFromInput = document.getElementById('dayFrom');
+  const dayToInput = document.getElementById('dayTo');
+
+  function activate(target) {
+    const showAll = target === 'all';
+    const showCustomer = target === 'customer';
+    const showDay = target === 'day';
+
+    if (groupAll) groupAll.style.display = showAll ? '' : 'none';
+    if (groupCustomer) groupCustomer.style.display = showCustomer ? '' : 'none';
+    if (groupDay) groupDay.style.display = showDay ? '' : 'none';
+
+    if (tabAll) {
+      tabAll.classList.toggle('is-active', showAll);
+      tabAll.setAttribute('aria-selected', showAll ? 'true' : 'false');
+    }
+    if (tabCustomer) {
+      tabCustomer.classList.toggle('is-active', showCustomer);
+      tabCustomer.setAttribute('aria-selected', showCustomer ? 'true' : 'false');
+    }
+    if (tabDay) {
+      tabDay.classList.toggle('is-active', showDay);
+      tabDay.setAttribute('aria-selected', showDay ? 'true' : 'false');
+    }
+  }
+
+  if (tabAll) tabAll.addEventListener('click', () => activate('all'));
+  if (tabCustomer) tabCustomer.addEventListener('click', () => activate('customer'));
+  if (tabDay) tabDay.addEventListener('click', () => activate('day'));
+
+  if (customerSearchInput) {
+    customerSearchInput.addEventListener('input', () => renderAdminEvents());
+  }
+  if (daySortSelect) {
+    daySortSelect.addEventListener('change', () => renderAdminEvents());
+  }
+  if (dayFromInput) {
+    dayFromInput.addEventListener('change', () => renderAdminEvents());
+  }
+  if (dayToInput) {
+    dayToInput.addEventListener('change', () => renderAdminEvents());
+  }
+
+  // ポップアップ閉じるボタン
+  const closeBtn = document.querySelector('.task-popup-close-ui');
+  const overlay = document.querySelector('.task-popup-overlay-ui');
+  if (closeBtn) closeBtn.addEventListener('click', closePopup);
+  if (overlay) overlay.addEventListener('click', closePopup);
+}
+
+// 初期化
+async function initAdmin() {
+  const hasAccess = await checkAdminAccess();
+  if (!hasAccess) return;
+
+  await fetchAllData();
+  renderAdminEvents();
+  setupTabs();
+}
+
+// DOM読み込み後に初期化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  initAdmin();
+}
