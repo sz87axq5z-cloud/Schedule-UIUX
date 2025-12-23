@@ -11,7 +11,6 @@ RUN cd backend && npm install --production
 # アプリケーションのソースをコピー
 COPY backend/ ./backend/
 COPY index.html ./
-COPY admin.html ./
 COPY privacy.html ./
 COPY googlead8afeaec97ce92e.html ./
 COPY styles/ ./styles/

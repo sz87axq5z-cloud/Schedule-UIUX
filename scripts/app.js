@@ -152,43 +152,35 @@ window.addEventListener("DOMContentLoaded", async () => {
     renderMiniCalendar();
     renderWeekView();
 
-    // ログイン済みの場合、役割に応じて遷移
+    // ログイン済みの場合、保存された画面状態を復元
     if (isLoggedIn) {
-      if (loggedInUser.role === 'teacher') {
-        // 講師は管理画面へリダイレクト
-        window.location.href = 'admin.html';
-      } else {
-        // 生徒の場合、保存された画面状態を復元
-        if (savedState && (savedState.screen === 'calendar' || savedState.screen === 'tasks')) {
-          // 保存された画面を直接表示
-          if (savedState.current) {
-            state.current = new Date(savedState.current);
-          }
-          switchToApp();
-          if (savedState.view) setView(savedState.view);
-          if (savedState.screen === 'tasks') {
-            showMainMode('tasks');
-            renderTasksFromEvents();
-          } else {
-            showMainMode('calendar');
-          }
-        } else {
-          // 保存された状態がない場合はモード選択画面へ
-          if ($loginBtn) $loginBtn.style.display = "none";
-          if ($modeSelect) {
-            $modeSelect.style.display = "flex";
-            $modeSelect.setAttribute("aria-hidden", "false");
-          }
+      if (savedState && (savedState.screen === 'calendar' || savedState.screen === 'tasks')) {
+        // 保存された画面を直接表示
+        if (savedState.current) {
+          state.current = new Date(savedState.current);
         }
-        // 管理者画面リンクを非表示
-        const $adminLink = document.getElementById('adminLinkText');
-        if ($adminLink) $adminLink.style.display = "none";
+        switchToApp();
+        if (savedState.view) setView(savedState.view);
+        if (savedState.screen === 'tasks') {
+          showMainMode('tasks');
+          renderTasksFromEvents();
+        } else {
+          showMainMode('calendar');
+        }
+      } else {
+        // 保存された状態がない場合はモード選択画面へ
+        if ($loginBtn) $loginBtn.style.display = "none";
+        if ($modeSelect) {
+          $modeSelect.style.display = "flex";
+          $modeSelect.setAttribute("aria-hidden", "false");
+        }
       }
     }
   });
 
   // Googleログイン
   const $loginOverlay = byId("loginOverlay");
+  const $loginCard = document.querySelector('.login-card');
 
   if ($loginBtn) {
     $loginBtn.addEventListener("click", async () => {
@@ -199,6 +191,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         // ポップアップが閉じたらオーバーレイを表示するコールバック
         const showOverlay = () => {
+          // ログインカードを非表示にしてオーバーレイを表示
+          if ($loginCard) {
+            $loginCard.style.display = 'none';
+          }
           if ($loginOverlay) {
             $loginOverlay.style.display = 'flex';
           }
@@ -206,38 +202,39 @@ window.addEventListener("DOMContentLoaded", async () => {
 
         const user = await window.scheduleAPI.startGoogleLogin(showOverlay);
 
-        // ユーザー情報取得後にオーバーレイを非表示
-        if ($loginOverlay) {
-          $loginOverlay.style.display = 'none';
-        }
-        $loginBtn.textContent = 'Googleでログイン';
-        $loginBtn.disabled = false;
-
         if (user) {
           loggedInUser = user;
           currentUserId = user.id;
           // スケジュールを取得（Googleカレンダーから同期）
           await loadSchedulesFromAPI(true);
 
-          // 役割に応じて遷移
-          if (user.role === 'teacher') {
-            // 講師は管理画面へリダイレクト
-            window.location.href = 'admin.html';
-          } else {
-            // 生徒はモード選択へ
-            $loginBtn.style.display = "none";
-            if ($modeSelect) {
-              $modeSelect.style.display = "flex";
-              $modeSelect.setAttribute("aria-hidden", "false");
-            } else {
-              switchToApp();
-            }
-            // 管理者画面リンクを非表示
-            const $adminLink = document.getElementById('adminLinkText');
-            if ($adminLink) $adminLink.style.display = "none";
-            pushScreenState('mode-select');
+          // オーバーレイを非表示
+          if ($loginOverlay) {
+            $loginOverlay.style.display = 'none';
           }
+
+          // モード選択へ
+          if ($loginCard) {
+            $loginCard.style.display = 'block';
+          }
+          $loginBtn.style.display = "none";
+          if ($modeSelect) {
+            $modeSelect.style.display = "flex";
+            $modeSelect.setAttribute("aria-hidden", "false");
+          } else {
+            switchToApp();
+          }
+          pushScreenState('mode-select');
         } else {
+          // ログイン失敗時
+          if ($loginOverlay) {
+            $loginOverlay.style.display = 'none';
+          }
+          if ($loginCard) {
+            $loginCard.style.display = 'block';
+          }
+          $loginBtn.textContent = 'Googleでログイン';
+          $loginBtn.disabled = false;
           alert('ログインに失敗しました');
         }
       } else {
@@ -256,7 +253,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.warn("loginBtn not found");
   }
 
-  // ログイン後モード選択: タスク一覧（ダミー）
+  // ログイン後モード選択: タスク一覧
   if ($goTasks) {
     $goTasks.addEventListener("click", () => {
       switchToApp();
