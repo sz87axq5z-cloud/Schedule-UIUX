@@ -141,6 +141,39 @@
     </form>
   </div>
 
+  <!-- LINE連携モーダル（初回ログイン時） -->
+  <div id="lineModalOverlay" class="modal-overlay" aria-hidden="true"></div>
+  <div id="lineModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="lineModalTitle" aria-hidden="true">
+    <div class="modal-header">
+      <h2 id="lineModalTitle">LINE連携</h2>
+    </div>
+    <div id="lineModalBody" class="modal-body">
+      <p class="line-modal-desc">LINEと連携すると、予定のリマインドを受け取ることができます。</p>
+      <div class="line-steps">
+        <div class="line-step">
+          <span class="line-step-num">1</span>
+          <span>下のボタンからLINE公式アカウントを友だち追加</span>
+        </div>
+        <div class="line-step">
+          <span class="line-step-num">2</span>
+          <span>LINEで下記の連携コードを送信</span>
+        </div>
+      </div>
+      <div class="line-code-box">
+        <span id="lineLinkCode" class="line-code">------</span>
+        <span class="line-code-label">連携コード</span>
+      </div>
+      <a id="lineAddFriendBtn" href="https://line.me/R/ti/p/@114fzwvm" target="_blank" class="btn btn-line">
+        <span class="line-icon">LINE</span>
+        友だち追加
+      </a>
+      <div class="modal-footer line-modal-footer">
+        <button type="button" id="lineSkipBtn" class="btn btn-ghost">あとで設定する</button>
+        <button type="button" id="lineCheckBtn" class="btn btn-primary">連携を確認</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 新規予定モーダル -->
   <div id="modalOverlay" class="modal-overlay" aria-hidden="true"></div>
   <div id="eventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">

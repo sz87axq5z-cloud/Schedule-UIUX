@@ -88,6 +88,13 @@ const $nameModalOverlay = byId("nameModalOverlay");
 const $nameForm = byId("nameForm");
 const $displayNameInput = byId("displayNameInput");
 
+// LINE連携モーダル
+const $lineModal = byId("lineModal");
+const $lineModalOverlay = byId("lineModalOverlay");
+const $lineLinkCode = byId("lineLinkCode");
+const $lineSkipBtn = byId("lineSkipBtn");
+const $lineCheckBtn = byId("lineCheckBtn");
+
 // ブラウザ履歴制御用フラグ
 let suppressHistory = false;
 
@@ -303,6 +310,78 @@ window.addEventListener("DOMContentLoaded", async () => {
     pushScreenState('mode-select');
   }
 
+  // LINE連携モーダルを表示
+  async function showLineModal() {
+    if ($lineModal && $lineModalOverlay) {
+      $lineModalOverlay.classList.add('open');
+      $lineModal.classList.add('open');
+      $lineModal.setAttribute('aria-hidden', 'false');
+      $lineModalOverlay.setAttribute('aria-hidden', 'false');
+
+      // 連携コードを取得
+      if ($lineLinkCode) {
+        $lineLinkCode.textContent = '------';
+      }
+      try {
+        const result = await window.scheduleAPI.getLineLinkCode();
+        if (result.success && result.linkCode) {
+          if ($lineLinkCode) {
+            $lineLinkCode.textContent = result.linkCode;
+          }
+        }
+      } catch (error) {
+        console.error('連携コード取得エラー:', error);
+      }
+    }
+  }
+
+  // LINE連携モーダルを閉じる
+  function hideLineModal() {
+    if ($lineModal && $lineModalOverlay) {
+      $lineModalOverlay.classList.remove('open');
+      $lineModal.classList.remove('open');
+      $lineModal.setAttribute('aria-hidden', 'true');
+      $lineModalOverlay.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  // LINE連携スキップボタンのハンドラー
+  if ($lineSkipBtn) {
+    $lineSkipBtn.addEventListener('click', () => {
+      hideLineModal();
+      proceedToModeSelect();
+    });
+  }
+
+  // LINE連携確認ボタンのハンドラー
+  if ($lineCheckBtn) {
+    $lineCheckBtn.addEventListener('click', async () => {
+      if ($lineCheckBtn) {
+        $lineCheckBtn.disabled = true;
+        $lineCheckBtn.textContent = '確認中...';
+      }
+
+      try {
+        const result = await window.scheduleAPI.checkLineStatus();
+        if (result.success && result.linked) {
+          alert('LINE連携が完了しました！');
+          hideLineModal();
+          proceedToModeSelect();
+        } else {
+          alert('まだLINE連携が完了していません。\nLINEで連携コードを送信してください。');
+        }
+      } catch (error) {
+        console.error('LINE連携確認エラー:', error);
+        alert('連携状態の確認に失敗しました');
+      } finally {
+        if ($lineCheckBtn) {
+          $lineCheckBtn.disabled = false;
+          $lineCheckBtn.textContent = '連携を確認';
+        }
+      }
+    });
+  }
+
   // 名前入力フォームのハンドラー
   if ($nameForm) {
     $nameForm.addEventListener('submit', async (e) => {
@@ -324,7 +403,8 @@ window.addEventListener("DOMContentLoaded", async () => {
         const result = await window.scheduleAPI.updateDisplayName(displayName);
         if (result.success) {
           hideNameModal();
-          proceedToModeSelect();
+          // LINE連携モーダルを表示
+          showLineModal();
         } else {
           alert(result.error || '登録に失敗しました');
         }

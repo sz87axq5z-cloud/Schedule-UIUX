@@ -287,6 +287,31 @@ async function updateDisplayName(displayName) {
   return result;
 }
 
+/**
+ * LINE連携コードを取得
+ */
+async function getLineLinkCode() {
+  if (!currentUser) {
+    return { success: false, error: 'ログインしていません' };
+  }
+  const result = await apiRequest('/notifications/line/link-code', {
+    method: 'POST',
+    body: JSON.stringify({ userId: currentUser.id })
+  });
+  return result;
+}
+
+/**
+ * LINE連携状態を確認
+ */
+async function checkLineStatus() {
+  if (!currentUser) {
+    return { success: false, linked: false };
+  }
+  const result = await apiRequest(`/notifications/line/status?userId=${currentUser.id}`);
+  return result;
+}
+
 // グローバルに公開
 window.scheduleAPI = {
   startGoogleLogin,
@@ -299,5 +324,7 @@ window.scheduleAPI = {
   syncFromGoogleCalendar,
   updateCustomerName,
   updateDisplayName,
+  getLineLinkCode,
+  checkLineStatus,
   getCurrentUser
 };
