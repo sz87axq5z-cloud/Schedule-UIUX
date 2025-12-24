@@ -233,18 +233,39 @@ window.addEventListener("DOMContentLoaded", async () => {
             }
             showNameModal();
           } else {
-            // モード選択へ
+            // displayNameはあるがLINE未連携の場合はLINE連携モーダルを表示
             if ($loginCard) {
               $loginCard.style.display = 'block';
             }
-            $loginBtn.style.display = "none";
-            if ($modeSelect) {
-              $modeSelect.style.display = "flex";
-              $modeSelect.setAttribute("aria-hidden", "false");
-            } else {
-              switchToApp();
+
+            // LINE連携状態を確認
+            try {
+              const lineStatus = await window.scheduleAPI.checkLineStatus();
+              if (!lineStatus.linked) {
+                // LINE未連携 → LINE連携モーダルを表示
+                showLineModal();
+              } else {
+                // LINE連携済み → モード選択へ
+                $loginBtn.style.display = "none";
+                if ($modeSelect) {
+                  $modeSelect.style.display = "flex";
+                  $modeSelect.setAttribute("aria-hidden", "false");
+                } else {
+                  switchToApp();
+                }
+                pushScreenState('mode-select');
+              }
+            } catch (e) {
+              // エラー時はモード選択へ進む
+              $loginBtn.style.display = "none";
+              if ($modeSelect) {
+                $modeSelect.style.display = "flex";
+                $modeSelect.setAttribute("aria-hidden", "false");
+              } else {
+                switchToApp();
+              }
+              pushScreenState('mode-select');
             }
-            pushScreenState('mode-select');
           }
         } else {
           // ログイン失敗時
