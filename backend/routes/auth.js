@@ -214,6 +214,44 @@ router.put('/role', async (req, res) => {
   }
 });
 
+// ユーザーの表示名を更新（初回ログイン時など）
+router.put('/displayName', async (req, res) => {
+  const userId = req.session?.userId || req.body.userId;
+  const { displayName } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'ログインしていません'
+    });
+  }
+
+  if (!displayName || displayName.trim().length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: '表示名を入力してください'
+    });
+  }
+
+  try {
+    await db.collection('users').doc(userId).update({
+      displayName: displayName.trim(),
+      updatedAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      displayName: displayName.trim()
+    });
+  } catch (error) {
+    console.error('表示名更新エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: '表示名の更新に失敗しました'
+    });
+  }
+});
+
 // ログアウト
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {

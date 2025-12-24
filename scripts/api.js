@@ -273,6 +273,20 @@ function getCurrentUser() {
   return currentUser;
 }
 
+/**
+ * ユーザーの表示名を更新
+ */
+async function updateDisplayName(displayName) {
+  const result = await apiRequest('/auth/displayName', {
+    method: 'PUT',
+    body: JSON.stringify({ displayName, userId: currentUser?.id })
+  });
+  if (result.success && currentUser) {
+    currentUser.displayName = result.displayName;
+  }
+  return result;
+}
+
 // グローバルに公開
 window.scheduleAPI = {
   startGoogleLogin,
@@ -284,5 +298,6 @@ window.scheduleAPI = {
   deleteSchedule,
   syncFromGoogleCalendar,
   updateCustomerName,
+  updateDisplayName,
   getCurrentUser
 };

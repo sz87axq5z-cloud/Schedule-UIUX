@@ -130,10 +130,14 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 生徒の更新済み表示名をFirestoreから取得（既存のスケジュールがあれば）
+    // 生徒の表示名を取得する優先順位:
+    // 1. 既存スケジュールのstudentName
+    // 2. usersコレクションのdisplayName
+    // 3. フロントエンドから渡されたstudentName
     let effectiveStudentName = studentName || null;
     if (studentId) {
       try {
+        // まず既存スケジュールから名前を探す
         const existingSchedules = await db.collection(COLLECTION)
           .where('studentId', '==', studentId)
           .limit(1)
@@ -145,9 +149,19 @@ router.post('/', async (req, res) => {
             effectiveStudentName = existingData.studentName;
             console.log(`既存の表示名を使用: ${effectiveStudentName}`);
           }
+        } else {
+          // 既存スケジュールがない場合、usersコレクションからdisplayNameを取得
+          const userDoc = await db.collection('users').doc(studentId).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.displayName) {
+              effectiveStudentName = userData.displayName;
+              console.log(`ユーザーのdisplayNameを使用: ${effectiveStudentName}`);
+            }
+          }
         }
       } catch (err) {
-        console.error('既存スケジュールの取得エラー:', err.message);
+        console.error('表示名の取得エラー:', err.message);
         // エラーが発生しても続行（元の名前を使用）
       }
     }

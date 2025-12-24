@@ -423,3 +423,11 @@ body.tasks-mode #calendarFab{
 body:not(.tasks-mode) #tasksFab{
   display:none;
 }
+
+/* 名前入力モーダル */
+.name-modal-desc{
+  font-size:13px;
+  color:var(--g-600);
+  margin-bottom:16px;
+  line-height:1.5;
+}

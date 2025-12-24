@@ -82,6 +82,12 @@ const $modalDelete = byId("modalDelete");
 const $modalLoading = byId("modalLoading");
 const $modalLoadingText = byId("modalLoadingText");
 
+// 名前入力モーダル
+const $nameModal = byId("nameModal");
+const $nameModalOverlay = byId("nameModalOverlay");
+const $nameForm = byId("nameForm");
+const $displayNameInput = byId("displayNameInput");
+
 // ブラウザ履歴制御用フラグ
 let suppressHistory = false;
 
@@ -213,18 +219,26 @@ window.addEventListener("DOMContentLoaded", async () => {
             $loginOverlay.style.display = 'none';
           }
 
-          // モード選択へ
-          if ($loginCard) {
-            $loginCard.style.display = 'block';
-          }
-          $loginBtn.style.display = "none";
-          if ($modeSelect) {
-            $modeSelect.style.display = "flex";
-            $modeSelect.setAttribute("aria-hidden", "false");
+          // 初回ログイン時（displayNameがない場合）は名前入力モーダルを表示
+          if (!user.displayName) {
+            if ($loginCard) {
+              $loginCard.style.display = 'block';
+            }
+            showNameModal();
           } else {
-            switchToApp();
+            // モード選択へ
+            if ($loginCard) {
+              $loginCard.style.display = 'block';
+            }
+            $loginBtn.style.display = "none";
+            if ($modeSelect) {
+              $modeSelect.style.display = "flex";
+              $modeSelect.setAttribute("aria-hidden", "false");
+            } else {
+              switchToApp();
+            }
+            pushScreenState('mode-select');
           }
-          pushScreenState('mode-select');
         } else {
           // ログイン失敗時
           if ($loginOverlay) {
@@ -251,6 +265,79 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   } else {
     console.warn("loginBtn not found");
+  }
+
+  // 名前入力モーダルを表示
+  function showNameModal() {
+    if ($nameModal && $nameModalOverlay) {
+      $nameModalOverlay.classList.add('open');
+      $nameModal.classList.add('open');
+      $nameModal.setAttribute('aria-hidden', 'false');
+      $nameModalOverlay.setAttribute('aria-hidden', 'false');
+      if ($displayNameInput) {
+        $displayNameInput.value = '';
+        $displayNameInput.focus();
+      }
+    }
+  }
+
+  // 名前入力モーダルを閉じる
+  function hideNameModal() {
+    if ($nameModal && $nameModalOverlay) {
+      $nameModalOverlay.classList.remove('open');
+      $nameModal.classList.remove('open');
+      $nameModal.setAttribute('aria-hidden', 'true');
+      $nameModalOverlay.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  // 名前入力後にモード選択へ進む
+  function proceedToModeSelect() {
+    if ($loginBtn) $loginBtn.style.display = "none";
+    if ($modeSelect) {
+      $modeSelect.style.display = "flex";
+      $modeSelect.setAttribute("aria-hidden", "false");
+    } else {
+      switchToApp();
+    }
+    pushScreenState('mode-select');
+  }
+
+  // 名前入力フォームのハンドラー
+  if ($nameForm) {
+    $nameForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const displayName = $displayNameInput?.value?.trim();
+      if (!displayName) {
+        alert('名前を入力してください');
+        return;
+      }
+
+      // ボタンを無効化
+      const submitBtn = $nameForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '登録中...';
+      }
+
+      try {
+        const result = await window.scheduleAPI.updateDisplayName(displayName);
+        if (result.success) {
+          hideNameModal();
+          proceedToModeSelect();
+        } else {
+          alert(result.error || '登録に失敗しました');
+        }
+      } catch (error) {
+        console.error('名前登録エラー:', error);
+        alert('登録に失敗しました');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '登録';
+        }
+      }
+    });
   }
 
   // ログイン後モード選択: タスク一覧
@@ -963,7 +1050,7 @@ async function addEvent(){
           startTime: start.toISOString(),
           endTime: end.toISOString(),
           studentId: currentUserId,
-          studentName: loggedInUser ? loggedInUser.name : null
+          studentName: loggedInUser ? (loggedInUser.displayName || loggedInUser.name) : null
         };
         const result = await window.scheduleAPI.createSchedule(scheduleData);
         if (result.success) {
