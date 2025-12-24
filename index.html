@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>スケジュール管理アプリ</title>
-  <link rel="stylesheet" href="styles/style.css?v=16" />
+  <link rel="stylesheet" href="styles/style.css?v=17" />
 </head>
 <body>
   <!-- ログイン画面 -->
@@ -149,24 +149,42 @@
     </div>
     <div id="lineModalBody" class="modal-body">
       <p class="line-modal-desc">LINEと連携すると、予定のリマインドを受け取ることができます。</p>
+
       <div class="line-steps">
         <div class="line-step">
           <span class="line-step-num">1</span>
-          <span>下のボタンからLINE公式アカウントを友だち追加</span>
+          <span class="line-step-text">
+            <strong>友だち追加</strong><br>
+            <small>下の緑のボタンをタップして、LINE公式アカウントを友だち追加してください</small>
+          </span>
         </div>
         <div class="line-step">
           <span class="line-step-num">2</span>
-          <span>LINEで下記の連携コードを送信</span>
+          <span class="line-step-text">
+            <strong>コードを送信</strong><br>
+            <small>LINEのトーク画面で、下に表示されている6桁の数字を送ってください</small>
+          </span>
+        </div>
+        <div class="line-step">
+          <span class="line-step-num">3</span>
+          <span class="line-step-text">
+            <strong>連携を確認</strong><br>
+            <small>LINEで「連携が完了しました」と届いたら、このアプリに戻って「連携を確認」ボタンを押してください</small>
+          </span>
         </div>
       </div>
-      <div class="line-code-box">
-        <span id="lineLinkCode" class="line-code">------</span>
-        <span class="line-code-label">連携コード</span>
-      </div>
+
       <a id="lineAddFriendBtn" href="https://line.me/R/ti/p/@114fzwvm" target="_blank" class="btn btn-line">
         <span class="line-icon">LINE</span>
         友だち追加
       </a>
+
+      <div class="line-code-box">
+        <span class="line-code-label">あなたの連携コード</span>
+        <span id="lineLinkCode" class="line-code">------</span>
+        <small class="line-code-hint">この6桁の数字をLINEで送信してね</small>
+      </div>
+
       <div class="modal-footer line-modal-footer">
         <button type="button" id="lineSkipBtn" class="btn btn-ghost">あとで設定する</button>
         <button type="button" id="lineCheckBtn" class="btn btn-primary">連携を確認</button>

@@ -449,47 +449,75 @@ body:not(.tasks-mode) #tasksFab{
 
 .line-step{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:12px;
   font-size:13px;
+  padding:12px;
+  background:#FAFAFA;
+  border-radius:8px;
 }
 
 .line-step-num{
-  width:24px;
-  height:24px;
+  width:28px;
+  height:28px;
   border-radius:50%;
   background:#000;
   color:#FFF;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:12px;
+  font-size:13px;
   font-weight:600;
   flex-shrink:0;
 }
 
+.line-step-text{
+  flex:1;
+  line-height:1.5;
+}
+
+.line-step-text strong{
+  display:block;
+  font-size:14px;
+  margin-bottom:2px;
+}
+
+.line-step-text small{
+  color:var(--g-600);
+  font-size:12px;
+}
+
 .line-code-box{
-  background:#F5F5F5;
+  background:linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+  border:2px solid #06C755;
   border-radius:12px;
-  padding:20px;
+  padding:16px;
   text-align:center;
-  margin-bottom:20px;
+  margin-top:16px;
 }
 
 .line-code{
   display:block;
-  font-size:32px;
+  font-size:36px;
   font-weight:700;
-  letter-spacing:8px;
+  letter-spacing:10px;
   color:#000;
   font-family:monospace;
+  margin:8px 0;
 }
 
 .line-code-label{
   display:block;
+  font-size:12px;
+  color:var(--g-700);
+  font-weight:600;
+}
+
+.line-code-hint{
+  display:block;
   font-size:11px;
-  color:var(--g-600);
-  margin-top:8px;
+  color:#06C755;
+  margin-top:4px;
 }
 
 .btn-line{
@@ -499,6 +527,7 @@ body:not(.tasks-mode) #tasksFab{
   gap:8px;
   width:100%;
   padding:14px 20px;
+  margin-top:20px;
   background:#06C755;
   color:#FFF;
   border:none;

@@ -364,4 +364,52 @@ router.post('/line/test', async (req, res) => {
   }
 });
 
+/**
+ * 開発用：LINE連携を解除（テスト用）
+ */
+router.delete('/line/unlink', async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      error: 'emailパラメータが必要です'
+    });
+  }
+
+  try {
+    // メールアドレスでユーザーを検索
+    const usersSnapshot = await db.collection('users')
+      .where('email', '==', email)
+      .get();
+
+    if (usersSnapshot.empty) {
+      return res.status(404).json({
+        success: false,
+        error: 'ユーザーが見つかりません'
+      });
+    }
+
+    // LINE連携情報を削除
+    for (const doc of usersSnapshot.docs) {
+      await doc.ref.update({
+        lineUserId: null,
+        lineLinkedAt: null
+      });
+      console.log(`LINE連携を解除: ${email} (userId: ${doc.id})`);
+    }
+
+    res.json({
+      success: true,
+      message: `${email} のLINE連携を解除しました`
+    });
+  } catch (error) {
+    console.error('LINE連携解除エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
