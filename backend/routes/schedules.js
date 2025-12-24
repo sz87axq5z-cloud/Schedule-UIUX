@@ -181,35 +181,32 @@ router.post('/', async (req, res) => {
       updatedAt: new Date()
     };
 
+    // 講師同期はバッチ処理で行うため、pendingフラグを設定
+    newSchedule.teacherSyncPending = true;
+
     const docRef = await db.collection(COLLECTION).add(newSchedule);
 
-    // Googleカレンダーに同期（生徒・講師）
-    // 講師IDが指定されていない場合は、環境変数のデフォルト講師を使用
-    const effectiveTeacherId = teacherId || process.env.TEACHER_USER_ID;
-
-    let calendarSync = null;
-    if (studentId || effectiveTeacherId) {
+    // Googleカレンダーに同期（生徒のみ即時同期、講師はバッチ処理）
+    let calendarSync = { student: null, teacher: { pending: true } };
+    if (studentId) {
       try {
-        calendarSync = await syncScheduleToCalendars({
-          ...newSchedule,
-          studentId,
-          teacherId: effectiveTeacherId
+        // 生徒のカレンダーのみ即時同期
+        const studentResult = await addEventToCalendar(studentId, newSchedule, {
+          titlePrefix: null,
+          additionalDescription: null
         });
 
+        calendarSync.student = studentResult;
+
         // GoogleイベントIDを保存
-        const googleEventIds = {};
-        if (calendarSync.student?.success) {
-          googleEventIds.studentGoogleEventId = calendarSync.student.googleEventId;
-        }
-        if (calendarSync.teacher?.success) {
-          googleEventIds.teacherGoogleEventId = calendarSync.teacher.googleEventId;
-        }
-        if (Object.keys(googleEventIds).length > 0) {
-          await docRef.update(googleEventIds);
+        if (studentResult.success) {
+          await docRef.update({
+            studentGoogleEventId: studentResult.googleEventId
+          });
         }
       } catch (syncError) {
-        console.error('Googleカレンダー同期エラー:', syncError);
-        // カレンダー同期に失敗してもスケジュール作成は成功とする
+        console.error('生徒カレンダー同期エラー:', syncError);
+        calendarSync.student = { success: false, error: syncError.message };
       }
     }
 
@@ -874,6 +871,110 @@ router.put('/customer/:studentId/name', async (req, res) => {
     res.status(500).json({
       success: false,
       error: '生徒名の更新に失敗しました'
+    });
+  }
+});
+
+/**
+ * 講師カレンダーへのバッチ同期（3時間ごとに実行）
+ * teacherSyncPending: true のスケジュールを講師カレンダーに同期
+ */
+router.post('/batch-sync-teacher', async (req, res) => {
+  try {
+    const teacherId = process.env.TEACHER_USER_ID;
+
+    if (!teacherId) {
+      return res.status(400).json({
+        success: false,
+        error: 'TEACHER_USER_IDが設定されていません'
+      });
+    }
+
+    console.log('講師カレンダーバッチ同期開始...');
+
+    // teacherSyncPending: true のスケジュールを取得
+    const pendingSnapshot = await db.collection(COLLECTION)
+      .where('teacherSyncPending', '==', true)
+      .get();
+
+    if (pendingSnapshot.empty) {
+      return res.json({
+        success: true,
+        message: '同期が必要なスケジュールはありません',
+        synced: 0,
+        errors: 0
+      });
+    }
+
+    console.log(`同期対象: ${pendingSnapshot.size}件`);
+
+    let syncedCount = 0;
+    let errorCount = 0;
+    const errors = [];
+
+    for (const doc of pendingSnapshot.docs) {
+      const schedule = doc.data();
+      const scheduleId = doc.id;
+
+      try {
+        // Firestoreのタイムスタンプを変換
+        let startTime = schedule.startTime;
+        let endTime = schedule.endTime;
+
+        if (startTime && typeof startTime.toDate === 'function') {
+          startTime = startTime.toDate();
+        } else if (startTime && startTime._seconds !== undefined) {
+          startTime = new Date(startTime._seconds * 1000);
+        }
+
+        if (endTime && typeof endTime.toDate === 'function') {
+          endTime = endTime.toDate();
+        } else if (endTime && endTime._seconds !== undefined) {
+          endTime = new Date(endTime._seconds * 1000);
+        }
+
+        // 講師カレンダーに同期
+        const calendarResult = await addEventToCalendar(teacherId, {
+          ...schedule,
+          startTime,
+          endTime
+        }, {
+          titlePrefix: schedule.studentName ? `【${schedule.studentName}】` : null,
+          additionalDescription: schedule.studentName ? `生徒: ${schedule.studentName}` : null
+        });
+
+        if (calendarResult.success) {
+          // 同期成功：フラグを更新
+          await doc.ref.update({
+            teacherSyncPending: false,
+            teacherGoogleEventId: calendarResult.googleEventId,
+            teacherSyncedAt: new Date()
+          });
+          syncedCount++;
+          console.log(`同期成功: ${scheduleId} - ${schedule.title}`);
+        } else {
+          errorCount++;
+          errors.push({ scheduleId, title: schedule.title, error: calendarResult.error });
+        }
+      } catch (error) {
+        console.error(`同期エラー: ${scheduleId}`, error.message);
+        errorCount++;
+        errors.push({ scheduleId, title: schedule.title, error: error.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `講師カレンダーへの同期が完了しました`,
+      synced: syncedCount,
+      errors: errorCount,
+      errorDetails: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('講師カレンダーバッチ同期エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

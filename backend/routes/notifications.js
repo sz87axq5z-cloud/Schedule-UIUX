@@ -247,7 +247,12 @@ router.post('/reminders/send', async (req, res) => {
     const dayAfter = new Date(tomorrow);
     dayAfter.setDate(dayAfter.getDate() + 1);
 
+    // 今日の日付文字列（重複チェック用）
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
     console.log(`リマインド送信: ${tomorrow.toISOString()} 〜 ${dayAfter.toISOString()}`);
+    console.log(`重複チェック日付: ${todayStr}`);
 
     // 翌日のスケジュールを取得
     const schedulesSnapshot = await db.collection('schedules')
@@ -259,12 +264,14 @@ router.post('/reminders/send', async (req, res) => {
       return res.json({
         success: true,
         message: '翌日の予定はありません',
-        sent: 0
+        sent: 0,
+        skipped: 0
       });
     }
 
     const sentUsers = new Set();
     let sentCount = 0;
+    let skippedCount = 0;
 
     for (const doc of schedulesSnapshot.docs) {
       const schedule = doc.data();
@@ -272,6 +279,14 @@ router.post('/reminders/send', async (req, res) => {
 
       // 既に送信済みのユーザーはスキップ
       if (!studentId || sentUsers.has(studentId)) continue;
+
+      // このスケジュールに対して今日既にリマインドを送信済みかチェック
+      if (schedule.reminderSentDate === todayStr) {
+        console.log(`スキップ（送信済み）: ${doc.id}`);
+        skippedCount++;
+        sentUsers.add(studentId);
+        continue;
+      }
 
       // ユーザー情報を取得
       const userDoc = await db.collection('users').doc(studentId).get();
@@ -299,6 +314,11 @@ router.post('/reminders/send', async (req, res) => {
 
       const result = await sendLineMessage(lineUserId, message);
       if (result.success) {
+        // 送信成功したら reminderSentDate を更新
+        await doc.ref.update({
+          reminderSentDate: todayStr,
+          reminderSentAt: new Date()
+        });
         sentCount++;
         sentUsers.add(studentId);
         console.log(`リマインド送信成功: ${studentId}`);
@@ -307,8 +327,9 @@ router.post('/reminders/send', async (req, res) => {
 
     res.json({
       success: true,
-      message: `${sentCount}件のリマインドを送信しました`,
-      sent: sentCount
+      message: `${sentCount}件のリマインドを送信しました（${skippedCount}件は送信済みのためスキップ）`,
+      sent: sentCount,
+      skipped: skippedCount
     });
   } catch (error) {
     console.error('リマインド送信エラー:', error);
