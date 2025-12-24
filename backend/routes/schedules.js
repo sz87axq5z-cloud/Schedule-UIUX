@@ -943,18 +943,19 @@ router.post('/batch-sync-teacher', async (req, res) => {
           additionalDescription: schedule.studentName ? `生徒: ${schedule.studentName}` : null
         });
 
-        if (calendarResult.success) {
+        // addEventToCalendarは成功時にGoogleイベントオブジェクトを返す
+        if (calendarResult && calendarResult.id) {
           // 同期成功：フラグを更新
           await doc.ref.update({
             teacherSyncPending: false,
-            teacherGoogleEventId: calendarResult.googleEventId,
+            teacherGoogleEventId: calendarResult.id,
             teacherSyncedAt: new Date()
           });
           syncedCount++;
           console.log(`同期成功: ${scheduleId} - ${schedule.title}`);
         } else {
           errorCount++;
-          errors.push({ scheduleId, title: schedule.title, error: calendarResult.error });
+          errors.push({ scheduleId, title: schedule.title, error: 'カレンダーイベントIDが取得できませんでした' });
         }
       } catch (error) {
         console.error(`同期エラー: ${scheduleId}`, error.message);
