@@ -39,7 +39,15 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
-app.use(express.json());
+
+// LINE Webhookは生のボディが必要なので、express.jsonをスキップ
+app.use((req, res, next) => {
+  if (req.path === '/api/notifications/line/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // セッション設定（30分間の非活動でログアウト）
 const SESSION_TTL = 30 * 60 * 1000; // 30分
