@@ -2367,6 +2367,10 @@
     }
 
     // 役割を切り替える
+    function setRole(role) {
+      switchRole(role);
+    }
+
     function switchRole(role) {
       currentRole = role;
 
@@ -3763,13 +3767,30 @@
       // 役割に応じて表示を制御
       const isTeacher = user.role === 'teacher';
 
-      // 役割切り替えボタンは常に非表示（それぞれの役割の画面のみ表示）
-      document.getElementById('role-toggle').style.display = 'none';
+      // 管理者/開発者のメールアドレスリスト（両方の画面にアクセス可能）
+      const adminEmails = [
+        'naonao0330@gmail.com',
+        'keibou.address@gmail.com',
+        'sz87axq5z@gmail.com'
+      ];
+      const isAdmin = adminEmails.includes(user.email);
+
+      // 管理者/開発者には役割切り替えボタンを表示
+      const roleToggle = document.getElementById('role-toggle');
+      if (isAdmin) {
+        roleToggle.style.display = 'flex';
+        roleToggle.innerHTML = `
+          <button id="role-student" class="${!isTeacher ? 'active' : ''}" onclick="setRole('student')">生徒</button>
+          <button id="role-teacher" class="${isTeacher ? 'active' : ''}" onclick="setRole('teacher')">講師</button>
+        `;
+      } else {
+        roleToggle.style.display = 'none';
+      }
 
       // ナビゲーション制御
       if (isTeacher) {
-        // 講師：講師管理画面のみ表示
-        document.getElementById('nav-student').style.display = 'none';
+        // 講師：講師管理画面を表示
+        document.getElementById('nav-student').style.display = isAdmin ? 'none' : 'none';
         document.getElementById('nav-teacher').style.display = 'flex';
         currentRole = 'teacher';
 
@@ -3780,9 +3801,9 @@
         // ダッシュボードを読み込み
         loadTeacherDashboard();
       } else {
-        // 生徒：生徒画面のみ表示
+        // 生徒：生徒画面を表示
         document.getElementById('nav-student').style.display = 'flex';
-        document.getElementById('nav-teacher').style.display = 'none';
+        document.getElementById('nav-teacher').style.display = isAdmin ? 'none' : 'none';
         currentRole = 'student';
 
         // 生徒用のデフォルトセクションを表示
