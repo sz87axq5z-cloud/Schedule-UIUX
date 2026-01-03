@@ -270,11 +270,13 @@ async function syncFromGoogleCalendar(userId) {
  * スケジュールを一括登録（ウィザード用）
  * @param {Array} schedules - 登録するスケジュールの配列
  *   各要素: { location, locationIcon, startTime, endTime }
+ * @param {string} studentId - 生徒のユーザーID
+ * @param {string} studentName - 生徒の表示名
  */
-async function createSchedulesBulk(schedules) {
+async function createSchedulesBulk(schedules, studentId = null, studentName = null) {
   const result = await apiRequest('/schedules/bulk', {
     method: 'POST',
-    body: JSON.stringify({ schedules })
+    body: JSON.stringify({ schedules, studentId, studentName })
   });
   return result;
 }
