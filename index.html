@@ -1,327 +1,3877 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>スケジュール管理アプリ</title>
-  <link rel="stylesheet" href="styles/style.css?v=22" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>片付けコーチング - less is</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif;
+      background: #ffffff;
+      color: #1a1a1a;
+      line-height: 1.8;
+    }
+
+    /* ヘッダー - コンパクト＆スタイリッシュ */
+    .proto-header {
+      background: #000000;
+      color: #ffffff;
+      padding: 10px 16px;
+      padding-top: max(10px, env(safe-area-inset-top));
+      min-height: 44px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .proto-header-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .proto-header h1 {
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      margin: 0;
+    }
+
+    .proto-header p {
+      display: none;
+    }
+
+    /* ナビゲーション - モバイルファースト */
+    .proto-nav {
+      display: flex;
+      background: #fafafa;
+      border-bottom: 1px solid #e5e5e5;
+      overflow-x: auto;
+      position: sticky;
+      top: 44px;
+      z-index: 99;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .proto-nav button {
+      flex: 1;
+      min-width: 100px;
+      min-height: 48px;
+      padding: 14px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #888;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .proto-nav button:active {
+      background: rgba(0,0,0,0.05);
+    }
+
+    .proto-nav button:hover {
+      color: #1a1a1a;
+    }
+
+    .proto-nav button.active {
+      color: #000000;
+      border-bottom-color: #000000;
+      font-weight: 500;
+    }
+
+    /* ユーザータイプ表示 - ミニマル */
+    .user-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 2px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      margin-bottom: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    .user-badge.student {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #e0e0e0;
+    }
+
+    .user-badge.teacher {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #e0e0e0;
+    }
+
+    .user-badge.system {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #e0e0e0;
+    }
+
+    /* セクション - モバイルファースト */
+    .proto-section {
+      display: none;
+      padding: 20px 16px;
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: 100px;
+    }
+
+    .proto-section.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.15rem;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .section-desc {
+      color: #555;
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      background: #fafafa;
+      border-radius: 6px;
+      border-left: 3px solid #1a1a1a;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .section-desc.highlight {
+      background: #fafafa;
+      border-left-color: #1a1a1a;
+    }
+
+    /* カード - モバイル対応 */
+    .card {
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 20px 16px;
+      margin-bottom: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #1a1a1a;
+      letter-spacing: 0.01em;
+    }
+
+    /* フォーム要素 - モバイルタッチ対応 */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: #555;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 14px 16px;
+      min-height: 48px;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      font-size: 16px;
+      background: #fafafa;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #1a1a1a;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+    }
+
+    /* ボタン - モバイルタッチ対応 */
+    .btn {
+      padding: 14px 28px;
+      min-height: 48px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #000000;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #333333;
+    }
+
+    .btn-primary:active {
+      background: #444444;
+      transform: scale(0.98);
+    }
+
+    .btn-secondary {
+      background: #f5f5f5;
+      color: #1a1a1a;
+      border: 1px solid #e0e0e0;
+    }
+
+    .btn-secondary:active {
+      background: #e8e8e8;
+      transform: scale(0.98);
+    }
+
+    .btn-success {
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .btn-success:active {
+      background: #333333;
+      transform: scale(0.98);
+    }
+
+    .btn-sm {
+      padding: 10px 16px;
+      min-height: 40px;
+      font-size: 0.85rem;
+    }
+
+    /* フルワイドボタン（モバイル用） */
+    .btn-block {
+      width: 100%;
+    }
+
+    /* 進捗ダッシュボード - モバイル対応 */
+    .student-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .student-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      background: #fafafa;
+      border-radius: 8px;
+      border: 1px solid #e5e5e5;
+      min-height: 70px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+
+    .student-item:active {
+      background: #f0f0f0;
+    }
+
+    .student-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin-right: 14px;
+      border: 1px solid #e0e0e0;
+      flex-shrink: 0;
+    }
+
+    .student-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .student-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+      font-size: 0.95rem;
+    }
+
+    .student-task {
+      font-size: 0.8rem;
+      color: #888;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ステータスバッジ - モバイル対応 */
+    .student-status {
+      padding: 8px 14px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      flex-shrink: 0;
+    }
+
+    .status-good {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #e0e0e0;
+    }
+
+    .status-warning {
+      background: #fafafa;
+      color: #888;
+      border: 1px solid #d0d0d0;
+    }
+
+    .status-danger {
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    .status-complete {
+      background: #000;
+      color: #fff;
+    }
+
+    /* 統計カード - ミニマル */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #fafafa;
+      padding: 20px;
+      border-radius: 4px;
+      text-align: center;
+      border: 1px solid #e5e5e5;
+    }
+
+    .stat-number {
+      font-size: 1.8rem;
+      font-weight: 300;
+      color: #000;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: #888;
+      font-weight: 400;
+    }
+
+    /* LINEモック - ミニマル */
+    .line-mock {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 350px;
+      margin: 0 auto;
+      border: 1px solid #e0e0e0;
+    }
+
+    .line-header {
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 15px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      letter-spacing: 0.02em;
+    }
+
+    .line-chat {
+      background: #fff;
+      border-radius: 4px;
+      padding: 15px;
+      min-height: 400px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .line-message {
+      margin-bottom: 12px;
+      max-width: 85%;
+    }
+
+    .line-message.bot {
+      margin-right: auto;
+    }
+
+    .line-message.user {
+      margin-left: auto;
+    }
+
+    .line-bubble {
+      padding: 12px 15px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .line-message.bot .line-bubble {
+      background: #f5f5f5;
+      border: 1px solid #e5e5e5;
+    }
+
+    .line-message.user .line-bubble {
+      background: #1a1a1a;
+      color: white;
+    }
+
+    .line-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .line-btn {
+      background: white;
+      border: 1px solid #1a1a1a;
+      color: #1a1a1a;
+      padding: 14px;
+      min-height: 48px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .line-btn:active {
+      background: #1a1a1a;
+      color: white;
+      transform: scale(0.98);
+    }
+
+    /* タスクリスト - モバイルタッチ対応 */
+    .task-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      background: #fafafa;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #e5e5e5;
+      min-height: 60px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+
+    .task-item:active {
+      background: #f0f0f0;
+    }
+
+    .task-checkbox {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #1a1a1a;
+      border-radius: 4px;
+      margin-right: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .task-checkbox.checked {
+      background: #1a1a1a;
+      color: white;
+      font-size: 14px;
+    }
+
+    .task-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .task-title {
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .task-time {
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* 進捗バー - ミニマル */
+    .progress-container {
+      margin: 20px 0;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #e5e5e5;
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #1a1a1a;
+      border-radius: 0;
+      transition: width 0.5s ease;
+    }
+
+    /* 比較テーブル */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    .compare-table th {
+      background: #f8f8f8;
+      font-weight: 600;
+    }
+
+    .compare-table .old {
+      color: #999;
+      text-decoration: line-through;
+    }
+
+    .compare-table .new {
+      color: #059669;
+      font-weight: 600;
+    }
+
+    /* テンプレート選択 - モバイルタッチ対応 */
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 15px 0;
+    }
+
+    .template-item {
+      padding: 14px;
+      min-height: 56px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .template-item:active {
+      background: #f0f0f0;
+      transform: scale(0.98);
+    }
+
+    .template-item.selected {
+      border-color: #1a1a1a;
+      border-width: 2px;
+      background: #f5f5f5;
+    }
+
+    .template-icon {
+      font-size: 1.4rem;
+      width: 40px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .template-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .template-name {
+      font-weight: 500;
+      font-size: 0.9rem;
+      margin-bottom: 3px;
+    }
+
+    .template-desc {
+      font-size: 0.75rem;
+      color: #888;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* 自動化フロー図 - ミニマル */
+    .flow-diagram {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 20px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      background: #fafafa;
+      border-radius: 4px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .flow-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      margin-right: 15px;
+    }
+
+    .flow-icon.student {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+    }
+
+    .flow-icon.system {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+    }
+
+    .flow-icon.teacher {
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+    }
+
+    .flow-content {
+      flex: 1;
+    }
+
+    .flow-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .flow-desc {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    .flow-arrow {
+      text-align: center;
+      color: #1a1a1a;
+      font-size: 1.2rem;
+    }
+
+    /* 削除表示 */
+    .removed-feature {
+      background: #fee2e2;
+      border: 1px dashed #dc2626;
+      padding: 10px 15px;
+      border-radius: 8px;
+      color: #991b1b;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+
+    .removed-feature::before {
+      content: '削除';
+      background: #dc2626;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-right: 10px;
+    }
+
+    /* リマインド設定 - モバイルタッチ対応 */
+    .remind-setting {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .remind-chip {
+      padding: 10px 18px;
+      min-height: 44px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid #d0d0d0;
+      background: white;
+      letter-spacing: 0.02em;
+      -webkit-tap-highlight-color: transparent;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .remind-chip:active {
+      transform: scale(0.96);
+    }
+
+    .remind-chip.active {
+      background: #1a1a1a;
+      color: white;
+      border-color: #1a1a1a;
+    }
+
+    /* 進捗チェックリスト - モバイル対応 */
+    .progress-checklist {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 12px;
+      min-height: 52px;
+      background: #fafafa;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      border: 1px solid #e5e5e5;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .checklist-item.done {
+      background: #f5f5f5;
+      border-color: #1a1a1a;
+    }
+
+    .checklist-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .checklist-item.done .checklist-icon {
+      background: #1a1a1a;
+      color: white;
+    }
+
+    .checklist-item:not(.done) .checklist-icon {
+      background: #e5e5e5;
+      color: #888;
+    }
+
+    /* レスポンシブ - モバイルファースト */
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .stat-card {
+        padding: 14px 8px;
+      }
+
+      .stat-number {
+        font-size: 1.4rem;
+      }
+
+      .stat-label {
+        font-size: 0.7rem;
+      }
+
+      .template-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .progress-checklist {
+        grid-template-columns: 1fr;
+      }
+
+      .proto-nav button {
+        min-width: 80px;
+        min-height: 44px;
+        font-size: 0.8rem;
+        padding: 12px 8px;
+      }
+
+      .proto-section {
+        padding: 16px 12px;
+        padding-bottom: 80px;
+      }
+
+      .card {
+        padding: 16px 14px;
+      }
+
+      .section-title {
+        font-size: 1.05rem;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 16px;
+      }
+
+      .student-item {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .student-status {
+        margin-left: auto;
+      }
+    }
+
+    /* アニメーション */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.9; }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    @keyframes slideDown {
+      from { opacity: 1; transform: translate(-50%, 0); }
+      to { opacity: 0; transform: translate(-50%, 20px); }
+    }
+
+    .proto-section.active {
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* 役割切り替えボタン - ミニマル */
+    .role-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .role-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 2px;
+      background: transparent;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+    }
+
+    .role-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    .role-btn.active {
+      background: white;
+      color: #000;
+      border-color: white;
+    }
+
+    .role-icon {
+      font-size: 1.1rem;
+    }
+
+    /* 場所選択プルダウン - モバイルタッチ対応 */
+    .location-option {
+      display: flex;
+      align-items: center;
+      padding: 16px 18px;
+      min-height: 56px;
+      cursor: pointer;
+      border-bottom: 1px solid #e5e5e5;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .location-option:active {
+      background: #f0f0f0;
+    }
+
+    .location-option.selected {
+      background: #f5f5f5;
+    }
+
+    .location-option .loc-icon {
+      font-size: 1.3rem;
+      width: 36px;
+      text-align: center;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    .location-option .loc-name {
+      flex: 1;
+      font-size: 0.95rem;
+    }
+
+    .location-option .loc-check {
+      color: #1a1a1a;
+      font-size: 1.2rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .location-option.selected .loc-check {
+      opacity: 1;
+    }
+
+    @media (max-width: 600px) {
+      .role-toggle {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .role-btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        justify-content: center;
+      }
+    }
+  </style>
 </head>
 <body>
-  <!-- ログイン画面 -->
-  <div id="login" class="view view-login" aria-hidden="false">
-    <div class="login-card" role="dialog" aria-labelledby="login-title">
-      <h1 id="login-title">スケジュール管理アプリ</h1>
-      <button id="loginBtn" class="btn btn-google" aria-label="Googleでログイン">Googleでログイン</button>
-      <div id="modeSelect" class="mode-select" aria-hidden="true">
-        <button id="goTasks" class="btn btn-ghost">タスク一覧へ</button>
-        <button id="goCalendar" class="btn btn-primary">カレンダーへ</button>
-      </div>
-      <p class="desc" style="margin-top:24px; font-size:10px; color:#999;">
-        <a href="privacy.html" style="color:#666;">プライバシーポリシー</a>
-      </p>
+  <header class="proto-header">
+    <div class="proto-header-brand">
+      <h1>片付けコーチング</h1>
     </div>
-    <!-- ログイン処理中オーバーレイ -->
-    <div id="loginOverlay" class="login-overlay" style="display:none;">
-      <div class="login-overlay-content">
-        <div class="login-spinner"></div>
-        <p class="login-overlay-text">ログイン中...</p>
-      </div>
-    </div>
-  </div>
 
-  <!-- アプリ画面 -->
-  <div id="app" class="view view-app" aria-hidden="true">
-    <header class="app-header user-header">
-      <button id="headerUndo" class="user-back-btn" type="button">←</button>
-      <div class="app-header-center">
-        <button id="headerWeekPrev" class="header-nav-sm header-week-nav" type="button">＜</button>
-        <button id="headerMonthPrev" class="header-nav-sm header-month-nav" type="button">＜</button>
-        <div id="headerMonthLabel" class="header-title-sm"></div>
-        <div id="tasksHeaderTitle" class="header-title-sm tasks-header-title">タスク一覧</div>
-        <button id="headerMonthNext" class="header-nav-sm header-month-nav" type="button">＞</button>
-        <button id="headerWeekNext" class="header-nav-sm header-week-nav" type="button">＞</button>
-      </div>
-      <div class="app-header-right">
-        <button id="headerGoCalendar" class="user-link-btn" type="button">タスク</button>
-        <button id="headerSettingsBtn" class="header-settings-btn" type="button" aria-label="設定">⚙️</button>
-        <button id="menuBtn" class="menu-hamburger" aria-label="メニュー">
-          <span></span>
-          <span></span>
-          <span></span>
+    <!-- ログイン状態表示 -->
+    <div id="login-area">
+      <!-- 未ログイン時 -->
+      <div id="login-prompt" style="display: block;">
+        <button id="google-login-btn" onclick="handleGoogleLogin()" style="background: white; color: #1a1a1a; border: none; padding: 8px 14px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 500;">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          ログイン
         </button>
       </div>
-
-      <!-- 既存の週移動・ビュー切替ボタン（ロジック用 / UI上は非表示にする） -->
-      <div class="header-legacy" aria-hidden="true">
-        <button id="prevWeek" class="btn btn-ghost" aria-label="前の週">＜</button>
-        <button id="today" class="btn btn-ghost">今週</button>
-        <button id="nextWeek" class="btn btn-ghost" aria-label="次の週">＞</button>
-        <div id="currentRange" class="range"></div>
-        <div class="view-switch" role="tablist" aria-label="ビュー切替">
-          <button id="viewMonth" class="btn btn-ghost" role="tab" aria-selected="false">月</button>
-          <button id="viewWeek" class="btn btn-ghost" role="tab" aria-selected="true">週</button>
-          <button id="viewDay" class="btn btn-ghost" role="tab" aria-selected="false">日</button>
+      <!-- ログイン済み時 -->
+      <div id="logged-in-user" style="display: none;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="user-display-name" style="font-size: 0.8rem; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+          <button onclick="handleLogout()" style="background: transparent; border: 1px solid rgba(255,255,255,0.4); color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.7rem; cursor: pointer;">ログアウト</button>
         </div>
-        <span class="brand">Monotone Calendar</span>
       </div>
-    </header>
+    </div>
 
-    <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
+    <!-- 役割切り替えボタン（非表示） -->
+    <div class="role-toggle" id="role-toggle" style="display: none;"></div>
+  </header>
 
-    <div class="app-body">
-      <aside class="sidebar" aria-label="サイドバー">
-        <div class="nav-views" aria-label="表示期間">
-          <button class="nav-view-item" data-view="day">日</button>
-          <button class="nav-view-item is-active" data-view="week">週</button>
-          <button class="nav-view-item" data-view="month">月</button>
+  <!-- 生徒用ナビゲーション -->
+  <nav class="proto-nav" id="nav-student">
+    <button class="active" onclick="showSection('student-task')">スケジュール登録</button>
+    <button onclick="showSection('line-flow')">LINE通知イメージ</button>
+  </nav>
+
+  <!-- 講師用ナビゲーション -->
+  <nav class="proto-nav" id="nav-teacher" style="display: none;">
+    <button class="active" onclick="showSection('daily-tasks')">今日のタスク</button>
+    <button onclick="showSection('dashboard')">生徒の進捗</button>
+    <button onclick="showSection('teacher-setting')">設定</button>
+  </nav>
+
+  <!-- 変更点まとめ -->
+  <section id="changes" class="proto-section">
+    <h2 class="section-title">新しくなること</h2>
+    <div class="section-desc highlight">
+      <strong>目的：</strong>生徒さんが「一気に片付け」を完遂できるようサポート。講師が手をかけなくても、アプリが自動でリマインドやフォローをしてくれます。
+    </div>
+
+    <!-- 現在のアプリの状態 -->
+    <div class="card">
+      <div class="card-title">📱 今のアプリでできること</div>
+      <div style="margin-top: 15px; color: #666;">
+        <div style="padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          ✅ Googleカレンダーと連携してスケジュール管理
         </div>
-        <div class="mini-cal" aria-label="ミニカレンダー">
-          <div class="mini-cal-header">
-            <button id="miniPrev" class="btn btn-ghost" aria-label="前の月">＜</button>
-            <div id="miniMonthLabel" class="mini-month"></div>
-            <button id="miniNext" class="btn btn-ghost" aria-label="次の月">＞</button>
+        <div style="padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          ✅ LINEでスケジュールの通知を受け取る
+        </div>
+        <div style="padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          ✅ 講師が生徒の予定を確認できる
+        </div>
+      </div>
+    </div>
+
+    <!-- 新しく追加される機能 -->
+    <div class="card" style="border: 2px solid #10b981;">
+      <div class="card-title" style="color: #10b981;">✨ 新しく追加される機能</div>
+      <div style="margin-top: 15px;">
+
+        <div style="padding: 15px; background: #ecfdf5; border-radius: 10px; margin-bottom: 12px;">
+          <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">1. 生徒が自分で片付けスケジュールを登録</div>
+          <div style="font-size: 0.9rem; color: #047857;">
+            「クローゼット」「冷蔵庫」など8つの参考例から選ぶか、「その他」で自由に場所を入力。<br>
+            日付と時間（何時から何時まで）を自分で決めて登録できます。
           </div>
-          <div class="mini-grid" id="miniGrid"></div>
-        </div>
-        <div class="sidebar-settings">
-          <button id="openSettingsBtn" class="sidebar-settings-btn" type="button">
-            <span class="settings-icon">⚙️</span>
-            <span>設定</span>
-          </button>
-        </div>
-      </aside>
-
-      <main class="calendar" aria-label="メインカレンダー" id="calendarMain">
-        <div id="loading" class="loading">読み込み中...</div>
-        <div id="syncIndicator" class="sync-indicator" style="display:none;">
-          <span class="sync-spinner"></span>
-          <span class="sync-text">Googleカレンダーと同期中...</span>
-        </div>
-        <div class="week-header" id="weekHeader"></div>
-        <div class="week-grid" id="weekGrid" tabindex="0" aria-label="週の時間グリッド"></div>
-      </main>
-
-      <main class="tasks-main" aria-label="タスク一覧" id="tasksMain" style="display:none;">
-        <div class="tasks-header">タスク一覧</div>
-        <div class="tasks-status-control" aria-label="ステータス">
-          <button type="button" class="tasks-status-btn" data-status="done">完了</button>
-          <button type="button" class="tasks-status-btn" data-status="warning">注意</button>
-          <button type="button" class="tasks-status-btn" data-status="late">遅延</button>
         </div>
 
-        <div class="tasks-group">
-          <div class="tasks-group-title">📌 TODAY</div>
-          <div id="tasksTodayList" class="tasks-list"></div>
+        <div style="padding: 15px; background: #ecfdf5; border-radius: 10px; margin-bottom: 12px;">
+          <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">2. LINEで自動リマインド</div>
+          <div style="font-size: 0.9rem; color: #047857;">
+            登録した日時に合わせて、LINEで自動的にリマインドが届きます。<br>
+            例：前日の夜、当日の朝、30分前など（講師が設定可能）
+          </div>
         </div>
 
-        <div class="tasks-group">
-          <div class="tasks-group-title">⚠️ 期日遅れ</div>
-          <div id="tasksOverdueList" class="tasks-list"></div>
+        <div style="padding: 15px; background: #ecfdf5; border-radius: 10px; margin-bottom: 12px;">
+          <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">3. ビフォー・アフター写真で完了報告</div>
+          <div style="font-size: 0.9rem; color: #047857;">
+            片付け前の「ビフォー写真」→ 片付け後の「アフター写真」をLINEに送信。<br>
+            講師が写真をチェックしてOKすると、完了通知が届きます。
+          </div>
         </div>
 
-        <div class="tasks-group">
-          <div class="tasks-group-title">📅 これから</div>
-          <div id="tasksUpcomingList" class="tasks-list"></div>
+        <div style="padding: 15px; background: #fce7f3; border-radius: 10px; margin-bottom: 12px;">
+          <div style="font-weight: 600; color: #be185d; margin-bottom: 8px;">4. 講師の「今日のタスク」画面（NEW!）</div>
+          <div style="font-size: 0.9rem; color: #9d174d;">
+            <strong>毎朝やることが明確に！</strong><br>
+            ・誰の写真をチェックすればいいか<br>
+            ・誰にフォローが必要か<br>
+            前日分のみ表示され、新しいタスクは追加されません。
+          </div>
         </div>
 
-        <button id="tasksAddBtn" class="tasks-add-btn" type="button">＋ タスクを追加</button>
-      </main>
-    </div>
-  </div>
+        <div style="padding: 15px; background: #ecfdf5; border-radius: 10px; margin-bottom: 12px;">
+          <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">5. ワンクリックで写真チェック完了</div>
+          <div style="font-size: 0.9rem; color: #047857;">
+            ビフォー・アフター写真を見比べて「OKする」ボタンをクリック。<br>
+            生徒に「OKです！次の片付けに進みましょう！」と自動通知されます。
+          </div>
+        </div>
 
-  <!-- 右下の新規予定追加ボタン（ユーザーカレンダー用） -->
-  <button id="calendarFab" class="fab-ui" type="button" aria-label="新規予定を追加">＋</button>
-  <!-- タスク一覧ビュー用の新規予定追加ボタン -->
-  <button id="tasksFab" class="fab-ui" type="button" aria-label="新規予定を追加">＋</button>
+        <div style="padding: 15px; background: #ecfdf5; border-radius: 10px;">
+          <div style="font-weight: 600; color: #065f46; margin-bottom: 8px;">6. 自動フォローメッセージ</div>
+          <div style="font-size: 0.9rem; color: #047857;">
+            片付けが完了していない場合、翌日や3日後に自動でフォローメッセージが送られます。<br>
+            講師が連絡しなくても、アプリがサポートしてくれます。
+          </div>
+        </div>
 
-  <!-- 名前入力モーダル（初回ログイン時） -->
-  <div id="nameModalOverlay" class="modal-overlay" aria-hidden="true"></div>
-  <div id="nameModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle" aria-hidden="true">
-    <div class="modal-header">
-      <h2 id="nameModalTitle">お名前を入力してください</h2>
-    </div>
-    <form id="nameForm" class="modal-body">
-      <p class="name-modal-desc">スケジュール管理に使用する名前を入力してください。</p>
-      <label class="field">
-        <span>お名前</span>
-        <input type="text" id="displayNameInput" required placeholder="例: 山田 太郎" />
-      </label>
-      <div class="modal-footer">
-        <button type="submit" class="btn btn-primary">登録</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- LINE連携モーダル（初回ログイン時） -->
-  <div id="lineModalOverlay" class="modal-overlay" aria-hidden="true"></div>
-  <div id="lineModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="lineModalTitle" aria-hidden="true">
-    <div class="modal-header">
-      <h2 id="lineModalTitle">LINE連携</h2>
-      <div class="modal-header-actions">
-        <button id="lineModalClose" class="btn btn-ghost line-modal-close-btn" aria-label="閉じる" style="display:none;">×</button>
       </div>
     </div>
-    <div id="lineModalBody" class="modal-body">
-      <p class="line-modal-desc">LINEと連携すると、予定のリマインドを受け取ることができます。</p>
 
-      <div class="line-steps">
-        <div class="line-step">
-          <span class="line-step-num">1</span>
-          <span class="line-step-text">
-            <strong>友だち追加</strong><br>
-            <small>下の緑のボタンをタップして、LINE公式アカウントを友だち追加してください</small>
+    <!-- 講師のメリット -->
+    <div class="card">
+      <div class="card-title">👩‍🏫 講師にとってのメリット</div>
+      <div class="stats-grid" style="margin-top: 15px;">
+        <div class="stat-card">
+          <div class="stat-number" style="font-size: 1.3rem;">毎朝5分</div>
+          <div class="stat-label">写真チェック</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" style="font-size: 1.5rem;">自動化</div>
+          <div class="stat-label">リマインド</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" style="font-size: 1.5rem;">自動化</div>
+          <div class="stat-label">フォロー</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: #666; margin-top: 15px; font-size: 0.95rem;">
+        👉 <strong>毎朝「今日のタスク」を消化するだけでOK！</strong><br>
+        前日分のみ表示、追加タスクなし。やることが明確です。
+      </p>
+    </div>
+
+    <!-- 生徒のメリット -->
+    <div class="card">
+      <div class="card-title">👤 生徒にとってのメリット</div>
+      <div style="margin-top: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          <span style="font-size: 1.3rem;">📅</span>
+          <span>自分のペースでスケジュールを決められる</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          <span style="font-size: 1.3rem;">🔔</span>
+          <span>忘れていてもLINEで思い出させてくれる</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f8f8; border-radius: 8px; margin-bottom: 8px;">
+          <span style="font-size: 1.3rem;">📸</span>
+          <span>写真を送るだけで報告完了（簡単！）</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f8f8f8; border-radius: 8px;">
+          <span style="font-size: 1.3rem;">✅</span>
+          <span>どこまで終わったか一目でわかる</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 全体の流れ -->
+    <div class="card">
+      <div class="card-title">🔄 使い方の流れ</div>
+      <div style="margin-top: 15px;">
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+          <div style="width: 36px; height: 36px; background: #667eea; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 12px;">1</div>
+          <div>
+            <div style="font-weight: 600;">生徒がスケジュール登録</div>
+            <div style="font-size: 0.85rem; color: #666;">片付ける場所ごとに日時を登録</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+          <div style="width: 36px; height: 36px; background: #667eea; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 12px;">2</div>
+          <div>
+            <div style="font-weight: 600;">LINEでリマインドが届く</div>
+            <div style="font-size: 0.85rem; color: #666;">当日朝「ビフォー写真を送ってね」</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+          <div style="width: 36px; height: 36px; background: #667eea; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 12px;">3</div>
+          <div>
+            <div style="font-weight: 600;">ビフォー写真 → 片付け → アフター写真</div>
+            <div style="font-size: 0.85rem; color: #666;">LINEに写真を送信</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+          <div style="width: 36px; height: 36px; background: #fce7f3; color: #be185d; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 12px;">4</div>
+          <div>
+            <div style="font-weight: 600;">講師が翌朝チェック</div>
+            <div style="font-size: 0.85rem; color: #666;">「今日のタスク」で写真確認 → OKボタン</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center;">
+          <div style="width: 36px; height: 36px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 12px;">✓</div>
+          <div>
+            <div style="font-weight: 600;">生徒に完了通知 → 次の場所へ</div>
+            <div style="font-size: 0.85rem; color: #666;">「OKです！次の片付けに進みましょう！」</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 生徒用タスク登録 -->
+  <section id="student-task" class="proto-section active">
+
+    <!-- サブタブナビゲーション -->
+    <div style="display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e5e5e5;">
+      <button id="subtab-new" onclick="showStudentSubtab('new')" style="flex: 1; padding: 12px 16px; background: none; border: none; border-bottom: 2px solid #1a1a1a; margin-bottom: -2px; font-size: 0.9rem; font-weight: 500; color: #1a1a1a; cursor: pointer;">
+        新規登録
+      </button>
+      <button id="subtab-registered" onclick="showStudentSubtab('registered')" style="flex: 1; padding: 12px 16px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 0.9rem; font-weight: 400; color: #888; cursor: pointer;">
+        登録済み予定
+      </button>
+    </div>
+
+    <!-- ========== 新規登録エリア ========== -->
+    <div id="student-subtab-new">
+
+    <!-- ステップインジケーター -->
+    <div id="step-indicator" style="display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;">
+      <div class="step-dot active" data-step="1" style="width: 10px; height: 10px; border-radius: 50%; background: #1a1a1a; transition: all 0.3s;"></div>
+      <div class="step-dot" data-step="2" style="width: 10px; height: 10px; border-radius: 50%; background: #e0e0e0; transition: all 0.3s;"></div>
+      <div class="step-dot" data-step="3" style="width: 10px; height: 10px; border-radius: 50%; background: #e0e0e0; transition: all 0.3s;"></div>
+    </div>
+
+    <!-- ========== STEP 1: 場所選択 ========== -->
+    <div id="wizard-step-1" class="wizard-step">
+      <!-- ミニマルなアクションガイド -->
+      <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+        <div style="font-size: 0.75rem; opacity: 0.5; letter-spacing: 0.1em; margin-bottom: 6px;">STEP 1 / 3</div>
+        <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+          片付ける場所を選ぶ
+        </div>
+        <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+          片付けたい場所をタップして選択
+        </div>
+      </div>
+
+      <!-- 場所選択カード -->
+      <div class="card" style="border: 1px solid #e5e5e5;">
+        <div class="card-header">
+          <div class="card-title" style="font-size: 1rem;">場所を選択</div>
+          <span id="selectedCountBadge" style="background: #1a1a1a; color: white; padding: 4px 12px; border-radius: 2px; font-size: 0.8rem;">0箇所</span>
+        </div>
+
+      <!-- プルダウン形式の場所選択 -->
+      <div id="locationDropdown" style="border: 1px solid #1a1a1a; border-radius: 4px; overflow: hidden; margin-top: 10px;">
+        <!-- 選択ヘッダー（クリックで開閉） -->
+        <div onclick="toggleLocationDropdown()" style="background: #1a1a1a; color: white; padding: 14px 18px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 400; font-size: 0.9rem; letter-spacing: 0.02em;">場所を選択</div>
+            <div style="font-size: 0.8rem; opacity: 0.7;" id="selectedCount">3箇所選択中</div>
+          </div>
+          <span id="dropdownArrow" style="font-size: 1rem; transition: transform 0.3s;">▼</span>
+        </div>
+
+        <!-- 選択リスト -->
+        <div id="locationList" style="max-height: 400px; overflow-y: auto; background: white;">
+          <!-- 衣類・ファッション -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">👕 衣類・ファッション</div>
+          <label class="location-option selected" data-location="closet">
+            <span class="loc-icon">👔</span>
+            <span class="loc-name">クローゼット</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="wardrobe">
+            <span class="loc-icon">🧥</span>
+            <span class="loc-name">タンス・衣装ケース</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="shoes">
+            <span class="loc-icon">👟</span>
+            <span class="loc-name">靴箱・シューズクローゼット</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="bags">
+            <span class="loc-icon">👜</span>
+            <span class="loc-name">バッグ・カバン収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="accessories">
+            <span class="loc-icon">💍</span>
+            <span class="loc-name">アクセサリー・小物</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- キッチン・食品 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🍳 キッチン・食品</div>
+          <label class="location-option selected" data-location="fridge">
+            <span class="loc-icon">🧊</span>
+            <span class="loc-name">冷蔵庫・冷凍庫</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="pantry">
+            <span class="loc-icon">🥫</span>
+            <span class="loc-name">パントリー・食品庫</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="kitchen-cabinet">
+            <span class="loc-icon">🍽️</span>
+            <span class="loc-name">食器棚</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="kitchen-drawer">
+            <span class="loc-icon">🥄</span>
+            <span class="loc-name">キッチン引き出し・カトラリー</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="cooking-tools">
+            <span class="loc-icon">🍳</span>
+            <span class="loc-name">調理器具・鍋類</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="under-sink">
+            <span class="loc-icon">🧴</span>
+            <span class="loc-name">シンク下収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 水回り -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🚿 水回り</div>
+          <label class="location-option" data-location="bathroom">
+            <span class="loc-icon">🛁</span>
+            <span class="loc-name">浴室・バスルーム</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="washroom">
+            <span class="loc-icon">🪥</span>
+            <span class="loc-name">洗面所・洗面台下</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="toilet">
+            <span class="loc-icon">🚽</span>
+            <span class="loc-name">トイレ・トイレ収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="laundry">
+            <span class="loc-icon">🧺</span>
+            <span class="loc-name">洗濯機周り・ランドリー</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- リビング・居室 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🛋️ リビング・居室</div>
+          <label class="location-option" data-location="living">
+            <span class="loc-icon">🛋️</span>
+            <span class="loc-name">リビング全体</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="tv-area">
+            <span class="loc-icon">📺</span>
+            <span class="loc-name">テレビ周り・AV機器</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="bookshelf">
+            <span class="loc-icon">📚</span>
+            <span class="loc-name">本棚・書棚</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="desk">
+            <span class="loc-icon">🖥️</span>
+            <span class="loc-name">デスク・作業スペース</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="storage-shelf">
+            <span class="loc-icon">🗄️</span>
+            <span class="loc-name">収納棚・ラック</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 寝室 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🛏️ 寝室</div>
+          <label class="location-option" data-location="bedroom">
+            <span class="loc-icon">🛏️</span>
+            <span class="loc-name">寝室全体</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="nightstand">
+            <span class="loc-icon">🛋️</span>
+            <span class="loc-name">ナイトテーブル・ベッドサイド</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="dresser">
+            <span class="loc-icon">🪞</span>
+            <span class="loc-name">ドレッサー・化粧台</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 玄関・廊下 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🚪 玄関・廊下</div>
+          <label class="location-option selected" data-location="entrance">
+            <span class="loc-icon">🚪</span>
+            <span class="loc-name">玄関・玄関収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="hallway">
+            <span class="loc-icon">🚶</span>
+            <span class="loc-name">廊下・廊下収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="umbrella">
+            <span class="loc-icon">☂️</span>
+            <span class="loc-name">傘立て・レインコート</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 子供部屋 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🧸 子供部屋</div>
+          <label class="location-option" data-location="kids-room">
+            <span class="loc-icon">🧒</span>
+            <span class="loc-name">子供部屋全体</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="toys">
+            <span class="loc-icon">🧸</span>
+            <span class="loc-name">おもちゃ収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="school-stuff">
+            <span class="loc-icon">🎒</span>
+            <span class="loc-name">学用品・ランドセル</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 収納スペース -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">📦 収納スペース</div>
+          <label class="location-option" data-location="oshiire">
+            <span class="loc-icon">📦</span>
+            <span class="loc-name">押入れ</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="storage-room">
+            <span class="loc-icon">🏠</span>
+            <span class="loc-name">納戸・物置部屋</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="ceiling-storage">
+            <span class="loc-icon">⬆️</span>
+            <span class="loc-name">天袋・ロフト</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="under-floor">
+            <span class="loc-icon">⬇️</span>
+            <span class="loc-name">床下収納</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 書類・デジタル -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">📄 書類・デジタル</div>
+          <label class="location-option" data-location="documents">
+            <span class="loc-icon">📄</span>
+            <span class="loc-name">書類・郵便物</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="photos">
+            <span class="loc-icon">📷</span>
+            <span class="loc-name">写真・アルバム</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="digital">
+            <span class="loc-icon">💾</span>
+            <span class="loc-name">デジタルデータ・PC内</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- 屋外・その他 -->
+          <div style="background: #f8f8f8; padding: 8px 15px; font-weight: 600; font-size: 0.85rem; color: #666; border-bottom: 1px solid #eee;">🏡 屋外・その他</div>
+          <label class="location-option" data-location="balcony">
+            <span class="loc-icon">🌿</span>
+            <span class="loc-name">ベランダ・バルコニー</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="garage">
+            <span class="loc-icon">🚗</span>
+            <span class="loc-name">ガレージ・駐車場</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="garden-shed">
+            <span class="loc-icon">🏚️</span>
+            <span class="loc-name">物置・倉庫</span>
+            <span class="loc-check">✓</span>
+          </label>
+          <label class="location-option" data-location="car">
+            <span class="loc-icon">🚙</span>
+            <span class="loc-name">車内</span>
+            <span class="loc-check">✓</span>
+          </label>
+
+          <!-- その他 -->
+          <label class="location-option other-option" data-location="other" style="border-top: 1px solid #1a1a1a; background: #fafafa;">
+            <span class="loc-icon">✏️</span>
+            <span class="loc-name" style="color: #1a1a1a;">その他（自由入力）</span>
+            <span class="loc-check">✓</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- その他選択時の入力欄 -->
+      <div id="customInput" style="display: none; margin-top: 15px; padding: 15px; background: #fafafa; border-radius: 4px; border: 1px solid #1a1a1a;">
+        <div class="form-group" style="margin-bottom: 10px;">
+          <label style="color: #1a1a1a; font-weight: 500;">片付ける場所を入力</label>
+          <input type="text" placeholder="例：和室、書斎、ペット用品 など" style="margin-top: 5px;">
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-top: 10px;">追加する</button>
+      </div>
+
+      <!-- 選択済み表示 -->
+      <div id="selectedLocations" style="background: #f5f5f5; border-radius: 4px; padding: 12px; margin-top: 15px;">
+        <div style="font-weight: 500; color: #1a1a1a; margin-bottom: 8px; font-size: 0.85rem;">選択中: 3箇所</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          <span style="background: white; border: 1px solid #1a1a1a; color: #1a1a1a; padding: 4px 12px; border-radius: 2px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            👔 クローゼット <span onclick="removeLocation(this)" style="cursor: pointer; opacity: 0.7;">×</span>
+          </span>
+          <span style="background: white; border: 1px solid #1a1a1a; color: #1a1a1a; padding: 4px 12px; border-radius: 2px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            🧊 冷蔵庫・冷凍庫 <span onclick="removeLocation(this)" style="cursor: pointer; opacity: 0.7;">×</span>
+          </span>
+          <span style="background: white; border: 1px solid #1a1a1a; color: #1a1a1a; padding: 4px 12px; border-radius: 2px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+            🚪 玄関・玄関収納 <span onclick="removeLocation(this)" style="cursor: pointer; opacity: 0.7;">×</span>
           </span>
         </div>
-        <div class="line-step">
-          <span class="line-step-num">2</span>
-          <span class="line-step-text">
-            <strong>コードを送信</strong><br>
-            <small>LINEのトーク画面で、下に表示されている6桁の数字を送ってください</small>
-          </span>
-        </div>
-        <div class="line-step">
-          <span class="line-step-num">3</span>
-          <span class="line-step-text">
-            <strong>連携を確認</strong><br>
-            <small>LINEで「連携が完了しました」と届いたら、このアプリに戻って「連携を確認」ボタンを押してください</small>
-          </span>
-        </div>
-      </div>
-
-      <a id="lineAddFriendBtn" href="https://line.me/R/ti/p/@114fzwvm" target="_blank" class="btn btn-line">
-        <span class="line-icon">LINE</span>
-        友だち追加
-      </a>
-
-      <div class="line-code-box">
-        <span class="line-code-label">あなたの連携コード</span>
-        <span id="lineLinkCode" class="line-code">------</span>
-        <small class="line-code-hint">この6桁の数字をLINEで送信してね</small>
-      </div>
-
-      <div class="modal-footer line-modal-footer">
-        <button type="button" id="lineSkipBtn" class="btn btn-ghost">あとで設定する</button>
-        <button type="button" id="lineCheckBtn" class="btn btn-primary">連携を確認</button>
       </div>
     </div>
-  </div>
 
-  <!-- 新規予定モーダル -->
-  <div id="modalOverlay" class="modal-overlay" aria-hidden="true"></div>
-  <div id="eventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
-    <div class="modal-header">
-      <h2 id="modalTitle">新規予定</h2>
-      <div class="modal-header-actions">
-        <button id="modalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
-      </div>
+      <!-- 次へボタン -->
+      <button onclick="goToStep(2)" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 15px; margin-top: 20px;">
+        次へ — 日時を決める →
+      </button>
     </div>
-    <form id="eventForm" class="modal-body">
-      <label class="field">
-        <span>タイトル</span>
-        <input type="text" id="titleInput" required placeholder="予定名" />
-      </label>
-      <div class="row">
-        <label class="field">
-          <span>開始</span>
-          <input type="date" id="startDateInput" required />
-          <select id="startTimeInput" required></select>
-        </label>
-        <label class="field">
-          <span>終了</span>
-          <input type="date" id="endDateInput" required />
-          <select id="endTimeInput" required></select>
-        </label>
-      </div>
-      <label class="field field-calendar">
-        <span>カレンダー</span>
-        <select id="calendarInput">
-          <option value="personal">個人</option>
-          <option value="team">チーム</option>
-          <option value="external">外部</option>
-        </select>
-      </label>
-      <label class="field">
-        <span>ステータス</span>
-        <select id="statusInput">
-          <option value="before">片づけ前</option>
-          <option value="done">片づけ完了</option>
-        </select>
-      </label>
-      <div class="modal-footer">
-        <button type="button" id="modalDelete" class="btn btn-danger" style="display:none;">削除</button>
-        <div class="modal-footer-right">
-          <button type="button" id="modalCancel" class="btn">キャンセル</button>
-          <button type="submit" class="btn btn-primary">追加</button>
-        </div>
-      </div>
-      <div id="modalLoading" class="modal-loading" style="display:none;">
-        <div class="modal-loading-content">
-          <div class="spinner"></div>
-          <span id="modalLoadingText">登録中...</span>
-        </div>
-      </div>
-    </form>
-  </div>
+    <!-- ========== END STEP 1 ========== -->
 
-  <!-- 設定モーダル -->
-  <div id="settingsModalOverlay" class="modal-overlay" aria-hidden="true"></div>
-  <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle" aria-hidden="true">
-    <div class="modal-header">
-      <h2 id="settingsModalTitle">設定</h2>
-      <div class="modal-header-actions">
-        <button id="settingsModalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
-      </div>
-    </div>
-    <div class="modal-body settings-modal-body">
-      <!-- 表示名の変更 -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">プロフィール</h3>
-        <div class="settings-item">
-          <div class="settings-item-info">
-            <span class="settings-item-label">表示名</span>
-            <span id="settingsCurrentName" class="settings-item-value">-</span>
-          </div>
-          <button id="settingsEditNameBtn" class="btn btn-ghost btn-sm" type="button">編集</button>
+    <!-- ========== STEP 2: 日時設定 ========== -->
+    <div id="wizard-step-2" class="wizard-step" style="display: none;">
+      <!-- ミニマルなアクションガイド -->
+      <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+        <div style="font-size: 0.75rem; opacity: 0.5; letter-spacing: 0.1em; margin-bottom: 6px;">STEP 2 / 3</div>
+        <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+          日時を決める
         </div>
-        <div id="settingsNameEditForm" class="settings-edit-form" style="display:none;">
-          <input type="text" id="settingsNameInput" class="settings-input" placeholder="新しい表示名" />
-          <div class="settings-edit-actions">
-            <button id="settingsNameCancel" class="btn btn-ghost btn-sm" type="button">キャンセル</button>
-            <button id="settingsNameSave" class="btn btn-primary btn-sm" type="button">保存</button>
+        <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+          選んだ場所ごとに片付け日時を設定
+        </div>
+      </div>
+
+      <!-- 戻るボタン -->
+      <button onclick="goToStep(1)" class="btn btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        ← 場所選択に戻る
+      </button>
+
+      <!-- 日時設定カード -->
+      <div class="card" style="border: 1px solid #e5e5e5;">
+
+      <!-- 注意書き -->
+      <div style="background: #fafafa; border: 1px solid #d0d0d0; border-radius: 4px; padding: 12px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: flex-start; gap: 8px;">
+          <span style="font-size: 1rem;">*</span>
+          <div>
+            <div style="font-weight: 500; color: #1a1a1a; margin-bottom: 4px; font-size: 0.9rem;">1箇所につき最低4時間以上の確保をお願いします</div>
+            <div style="font-size: 0.8rem; color: #666;">片付けは思った以上に時間がかかります。余裕を持った時間設定で、しっかり片付けを完了させましょう。</div>
           </div>
         </div>
       </div>
 
-      <!-- LINE連携 -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">LINE連携</h3>
-        <div class="settings-item">
-          <div class="settings-item-info">
-            <span class="settings-item-label">連携状態</span>
-            <span id="settingsLineStatus" class="settings-item-value">確認中...</span>
-          </div>
-          <button id="settingsLineLinkBtn" class="btn btn-line btn-sm" type="button">再連携</button>
+      <!-- 動的に場所ごとの日時設定カードが生成される -->
+      <div id="step2-locations-container">
+        <!-- JavaScriptで動的生成 -->
+      </div>
+      </div>
+
+      <!-- 次へボタン -->
+      <button onclick="goToStep(3)" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 15px; margin-top: 20px;">
+        次へ — 確認画面へ →
+      </button>
+    </div>
+    <!-- ========== END STEP 2 ========== -->
+
+    <!-- ========== STEP 3: 確認・登録 ========== -->
+    <div id="wizard-step-3" class="wizard-step" style="display: none;">
+      <!-- ミニマルなアクションガイド -->
+      <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+        <div style="font-size: 0.75rem; opacity: 0.5; letter-spacing: 0.1em; margin-bottom: 6px;">STEP 3 / 3</div>
+        <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+          確認して登録
+        </div>
+        <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+          内容を確認して登録を完了
         </div>
       </div>
 
-      <!-- その他 -->
-      <div class="settings-section">
-        <h3 class="settings-section-title">その他</h3>
-        <div class="settings-item">
-          <a href="privacy.html" target="_blank" class="settings-link">
-            <span>プライバシーポリシー</span>
-            <span class="settings-link-arrow">→</span>
-          </a>
+      <!-- 戻るボタン -->
+      <button onclick="goToStep(2)" class="btn btn-secondary" style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+        ← 日時設定に戻る
+      </button>
+
+      <!-- 確認カード -->
+      <div class="card" style="border: 2px solid #1a1a1a; background: #fafafa;">
+
+      <!-- 動的に確認内容が生成される -->
+      <div id="step3-confirmation-container">
+        <!-- JavaScriptで動的生成 -->
+      </div>
+
+      <div style="background: #f5f5f5; border-radius: 4px; padding: 12px; margin-bottom: 15px; margin-top: 15px; border: 1px solid #e5e5e5;">
+        <div style="font-size: 0.85rem; color: #666;">
+          <strong style="color: #1a1a1a;">登録後の流れ</strong><br>
+          ・各日程の前日と当日朝にLINEでリマインドが届きます<br>
+          ・片付けが終わったらLINEに写真を送信<br>
+          ・次の予定は自動で案内されます
         </div>
-        <div class="settings-item">
-          <button id="settingsLogoutBtn" class="btn btn-danger btn-sm" type="button">ログアウト</button>
+      </div>
+
+      <button onclick="registerSchedule()" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 15px;">
+        この内容で登録する
+      </button>
+      </div>
+    </div>
+    <!-- ========== END STEP 3 ========== -->
+
+    </div>
+    <!-- ========== END 新規登録エリア ========== -->
+
+    <!-- ========== 登録済み予定エリア ========== -->
+    <div id="student-subtab-registered" style="display: none;">
+
+    <!-- 登録済みの予定（場所ごと） -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">登録済みのスケジュール</div>
+      </div>
+
+      <!-- 動的に登録済みスケジュールが生成される -->
+      <div id="registered-schedules-container">
+        <p style="color: #666; text-align: center;">読み込み中...</p>
+      </div>
+    </div>
+
+    <!-- 全体進捗 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">あなたの進捗</div>
+        <span style="color: #1a1a1a; font-weight: 500;">2/5 箇所完了</span>
+      </div>
+
+      <div class="progress-container" style="margin: 10px 0;">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 40%;"></div>
+        </div>
+      </div>
+
+      <div class="progress-checklist">
+        <div class="checklist-item done">
+          <div class="checklist-icon">✓</div>
+          <span>🍳 キッチン</span>
+        </div>
+        <div class="checklist-item done">
+          <div class="checklist-icon">✓</div>
+          <span>🚿 洗面所・浴室</span>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-icon">3</div>
+          <span>👕 クローゼット</span>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-icon">4</div>
+          <span>🧊 冷蔵庫</span>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-icon">5</div>
+          <span>👟 玄関</span>
         </div>
       </div>
     </div>
-  </div>
 
-  <script src="scripts/data.js?v=2"></script>
-  <script src="scripts/api.js?v=5"></script>
-  <script src="scripts/app.js?v=18"></script>
+    </div>
+    <!-- ========== END 登録済み予定エリア ========== -->
+
+  </section>
+
+  <!-- 講師用：今日のタスク -->
+  <section id="daily-tasks" class="proto-section">
+
+    <!-- ミニマルなアクションガイド -->
+    <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+      <div id="today-date-display" style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 6px; letter-spacing: 0.1em;"></div>
+      <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+        今日のタスク
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+        生徒のスケジュール状況を確認
+      </div>
+    </div>
+
+    <!-- 今日のサマリー（動的） -->
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <div style="flex: 1; background: #fafafa; padding: 12px; border-radius: 4px; text-align: center; border: 1px solid #e5e5e5;">
+        <div id="today-scheduled-count" style="font-size: 1.4rem; font-weight: 300; color: #1a1a1a;">-</div>
+        <div style="font-size: 0.75rem; color: #888;">本日予定</div>
+      </div>
+      <div style="flex: 1; background: #059669; padding: 12px; border-radius: 4px; text-align: center;">
+        <div id="pending-photos-count" style="font-size: 1.4rem; font-weight: 300; color: #fff;">-</div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">写真チェック</div>
+      </div>
+      <div style="flex: 1; background: #1a1a1a; padding: 12px; border-radius: 4px; text-align: center;">
+        <div id="overdue-count" style="font-size: 1.4rem; font-weight: 300; color: #fff;">-</div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">要フォロー</div>
+      </div>
+    </div>
+
+    <!-- 写真チェック（承認待ち） -->
+    <div class="card" id="pending-photos-card" style="border: 2px solid #059669; position: relative; display: none;">
+      <div style="position: absolute; top: -12px; right: 20px; background: #059669; color: white; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; font-weight: 400; letter-spacing: 0.02em;">
+        要チェック
+      </div>
+      <div class="card-header">
+        <div class="card-title" style="color: #059669;">📷 写真チェック</div>
+        <span id="pending-photos-badge" style="background: #059669; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.75rem; font-weight: 400;">-件</span>
+      </div>
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">
+        生徒から送られたビフォー・アフター写真を確認してOKしましょう
+      </p>
+      <div id="pending-photos-container">
+        <p style="color: #666; text-align: center;">読み込み中...</p>
+      </div>
+    </div>
+
+    <!-- 本日の予定（動的生成） -->
+    <div class="card" style="border: 2px solid #1a1a1a; position: relative;">
+      <div style="position: absolute; top: -12px; right: 20px; background: #1a1a1a; color: white; padding: 4px 12px; border-radius: 2px; font-size: 0.75rem; font-weight: 400; letter-spacing: 0.02em;">
+        本日の予定
+      </div>
+      <div class="card-header">
+        <div class="card-title" style="color: #1a1a1a;">📅 本日の予定</div>
+        <span id="today-schedule-badge" style="background: #f5f5f5; color: #1a1a1a; padding: 4px 10px; border-radius: 2px; font-size: 0.75rem; font-weight: 400; border: 1px solid #e5e5e5;">-件</span>
+      </div>
+      <div id="today-schedules-container">
+        <p style="color: #666; text-align: center;">読み込み中...</p>
+      </div>
+    </div>
+
+    <!-- 要フォロー（過去の未完了） -->
+    <div class="card" style="border: 2px solid #1a1a1a;">
+      <div class="card-header">
+        <div class="card-title" style="color: #1a1a1a;">⚠️ 要フォロー</div>
+        <span id="overdue-badge" style="background: #1a1a1a; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.75rem; font-weight: 400;">-件</span>
+      </div>
+      <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">
+        予定日を過ぎた未完了のスケジュール
+      </p>
+      <div id="overdue-schedules-container">
+        <p style="color: #666; text-align: center;">読み込み中...</p>
+      </div>
+    </div>
+
+    <!-- 完了状態 -->
+    <div class="card" style="background: #fafafa; text-align: center; padding: 30px; border: 1px solid #e5e5e5;">
+      <div style="font-size: 1rem; margin-bottom: 10px; color: #1a1a1a;">—</div>
+      <div style="font-size: 0.95rem; font-weight: 400; color: #1a1a1a; margin-bottom: 8px; letter-spacing: 0.02em;">
+        上記タスクを完了すれば今日はOK
+      </div>
+      <div style="font-size: 0.8rem; color: #888;">
+        新しいタスクは明日の朝まで追加されません
+      </div>
+    </div>
+  </section>
+
+  <!-- 講師用リマインド設定 -->
+  <section id="teacher-setting" class="proto-section">
+
+    <!-- ミニマルなアクションガイド -->
+    <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+      <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+        設定
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+        デフォルトで動作します。必要な時だけ変更
+      </div>
+    </div>
+
+    <!-- アコーディオン1: リマインドタイミング -->
+    <div class="card" id="accordion-remind">
+      <div class="card-header" style="cursor: pointer;" onclick="toggleAccordion('remind')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.2rem;">🔔</span>
+          <div class="card-title">リマインドタイミング</div>
+          <span style="background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">設定済み</span>
+        </div>
+        <span id="accordion-remind-toggle" style="font-size: 1.2rem; color: #666; transition: transform 0.3s;">▶</span>
+      </div>
+      <div id="accordion-remind-content" style="display: none; padding-top: 15px; border-top: 1px solid #eee; margin-top: 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <p style="color: #666; font-size: 0.9rem; margin: 0;">
+            生徒の片付け日時に対して、いつリマインドを送るか設定します。
+          </p>
+          <button class="btn btn-secondary btn-sm" onclick="addRemindTiming()">+ 追加</button>
+        </div>
+
+      <div id="remindTimingList">
+        <!-- リマインド1 -->
+        <div class="remind-timing-item" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f8f8; border-radius: 8px; margin-bottom: 10px;">
+          <div style="flex: 1;">
+            <select style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-right: 8px;">
+              <option value="before">前日</option>
+              <option value="same">当日</option>
+              <option value="minutes">〇分前</option>
+              <option value="hours">〇時間前</option>
+            </select>
+            <input type="time" value="20:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          </div>
+          <span class="remind-chip active" style="cursor: default;">ON</span>
+          <button class="btn btn-sm" style="background: #fee2e2; color: #dc2626;">削除</button>
+        </div>
+
+        <!-- リマインド2 -->
+        <div class="remind-timing-item" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f8f8; border-radius: 8px; margin-bottom: 10px;">
+          <div style="flex: 1;">
+            <select style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-right: 8px;">
+              <option value="before">前日</option>
+              <option value="same" selected>当日</option>
+              <option value="minutes">〇分前</option>
+              <option value="hours">〇時間前</option>
+            </select>
+            <input type="time" value="08:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          </div>
+          <span class="remind-chip active" style="cursor: default;">ON</span>
+          <button class="btn btn-sm" style="background: #fee2e2; color: #dc2626;">削除</button>
+        </div>
+
+        <!-- リマインド3（分前） -->
+        <div class="remind-timing-item" style="display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f8f8; border-radius: 8px; margin-bottom: 10px;">
+          <div style="flex: 1;">
+            <select style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-right: 8px;" onchange="toggleTimeInput(this)">
+              <option value="before">前日</option>
+              <option value="same">当日</option>
+              <option value="minutes" selected>〇分前</option>
+              <option value="hours">〇時間前</option>
+            </select>
+            <input type="number" value="30" min="1" max="120" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+            <span style="color: #666; margin-left: 4px;">分前</span>
+          </div>
+          <span class="remind-chip active" style="cursor: default;">ON</span>
+          <button class="btn btn-sm" style="background: #fee2e2; color: #dc2626;">削除</button>
+        </div>
+      </div>
+
+      <p style="color: #888; font-size: 0.85rem; margin-top: 15px;">
+        例: 「前日 20:00」「当日 8:00」「30分前」の3回リマインドを送信
+      </p>
+      </div>
+    </div>
+
+    <!-- アコーディオン2: フォロー設定 -->
+    <div class="card" id="accordion-follow">
+      <div class="card-header" style="cursor: pointer;" onclick="toggleAccordion('follow')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.2rem;">📩</span>
+          <div class="card-title">フォロー設定</div>
+          <span style="background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">設定済み</span>
+        </div>
+        <span id="accordion-follow-toggle" style="font-size: 1.2rem; color: #666; transition: transform 0.3s;">▶</span>
+      </div>
+      <div id="accordion-follow-content" style="display: none; padding-top: 15px; border-top: 1px solid #eee; margin-top: 15px;">
+      <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+        片付け完了報告がない場合、自動でフォローメッセージを送ります。
+      </p>
+
+      <div class="form-group">
+        <label>1回目のフォロー</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="number" value="1" min="1" max="7" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          <span>日後</span>
+          <input type="time" value="10:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          <span class="remind-chip active" style="cursor: pointer;">ON</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>2回目のフォロー</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="number" value="3" min="1" max="14" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          <span>日後</span>
+          <input type="time" value="10:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+          <span class="remind-chip active" style="cursor: pointer;">ON</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="saveRemindSettings(this)">設定を保存</button>
+      </div>
+    </div>
+
+    <!-- アコーディオン3: メッセージテンプレート -->
+    <div class="card" id="accordion-message">
+      <div class="card-header" style="cursor: pointer;" onclick="toggleAccordion('message')">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.2rem;">💬</span>
+          <div class="card-title">メッセージテンプレート</div>
+          <span style="background: #d1fae5; color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;">9種類</span>
+        </div>
+        <span id="accordion-message-toggle" style="font-size: 1.2rem; color: #666; transition: transform 0.3s;">▶</span>
+      </div>
+      <div id="accordion-message-content" style="display: none; padding-top: 15px; border-top: 1px solid #eee; margin-top: 15px;">
+      <p style="color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+        片付ける場所ごとに送るアドバイスメッセージを編集できます。
+      </p>
+
+      <!-- クローゼット -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">👕 クローゼット</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>1年着ていない服を基準に仕分けしましょう！
+迷ったら「また着たいか？」で判断してみてください。</textarea>
+      </div>
+
+      <!-- 冷蔵庫 -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">🧊 冷蔵庫・冷凍庫</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>賞味期限をチェック！奥の方から確認を。
+同じ調味料が複数ないかも確認しましょう。</textarea>
+      </div>
+
+      <!-- 玄関 -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">👟 玄関・シューズ</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>履いていない靴、壊れた傘はありませんか？
+玄関は家の顔！スッキリさせましょう。</textarea>
+      </div>
+
+      <!-- キッチン -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">🍳 キッチン</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>使っていない調理器具は思い切って手放しましょう！
+重複している道具がないかチェック。</textarea>
+      </div>
+
+      <!-- 洗面所 -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">🚿 洗面所・浴室</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>使いかけのシャンプーや化粧品をチェック！
+古いタオルも見直しましょう。</textarea>
+      </div>
+
+      <!-- 本棚 -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">📚 本棚・書類</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>読み終わった本、古い書類を整理！
+もう読まない本は手放す候補に。</textarea>
+      </div>
+
+      <!-- リビング -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">🛋️ リビング</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>テーブルの上、収納棚の中をチェック！
+「とりあえず置いてある物」を見直しましょう。</textarea>
+      </div>
+
+      <!-- 寝室 -->
+      <div class="message-template-item" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">🛏️ 寝室・ベッド周り</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>ベッドサイドに置きっぱなしの物はありませんか？
+引き出しの中も整理しましょう。</textarea>
+      </div>
+
+      <!-- その他用デフォルト -->
+      <div class="message-template-item" style="border: 1px solid #667eea; border-radius: 10px; padding: 15px; background: #f8f8ff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <span style="font-weight: 600;">✏️ その他（デフォルト）</span>
+          <button class="btn btn-secondary btn-sm" onclick="toggleEdit(this)">編集</button>
+        </div>
+        <textarea style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; min-height: 60px;" disabled>片付け開始です！
+「使っている/使っていない」で仕分けしていきましょう。</textarea>
+        <p style="color: #667eea; font-size: 0.8rem; margin-top: 8px;">
+          ※ 生徒が「その他」で登録した場所にはこのメッセージが送信されます
+        </p>
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%; margin-top: 15px;" onclick="saveMessageTemplates(this)">全てのテンプレートを保存</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 進捗ダッシュボード（講師用） -->
+  <section id="dashboard" class="proto-section">
+
+    <!-- ミニマルなアクションガイド -->
+    <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+      <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+        生徒の進捗
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+        生徒ごとのスケジュール状況を確認
+      </div>
+    </div>
+
+    <!-- サマリーカード -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <div style="flex: 1; background: #fafafa; padding: 15px; border-radius: 4px; text-align: center; border: 1px solid #e5e5e5;">
+        <div id="student-count" style="font-size: 1.6rem; font-weight: 300; color: #1a1a1a;">-</div>
+        <div style="font-size: 0.75rem; color: #888;">生徒数</div>
+      </div>
+      <div style="flex: 1; background: #1a1a1a; padding: 15px; border-radius: 4px; text-align: center;">
+        <div id="total-schedule-count" style="font-size: 1.6rem; font-weight: 300; color: #fff;">-</div>
+        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">全予定数</div>
+      </div>
+      <div style="flex: 1; background: #fafafa; padding: 15px; border-radius: 4px; text-align: center; border: 1px solid #e5e5e5;">
+        <div id="completed-count" style="font-size: 1.6rem; font-weight: 300; color: #1a1a1a;">-</div>
+        <div style="font-size: 0.75rem; color: #888;">完了</div>
+      </div>
+    </div>
+
+    <!-- 生徒一覧（動的生成） -->
+    <div id="students-progress-container">
+      <p style="color: #666; text-align: center;">読み込み中...</p>
+    </div>
+  </section>
+
+  <!-- LINE連携 -->
+  <section id="line-flow" class="proto-section">
+
+    <!-- ミニマルなアクションガイド -->
+    <div style="background: #000; color: white; border-radius: 4px; padding: 24px 20px; margin-bottom: 24px; text-align: center;">
+      <div style="font-size: 1.1rem; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 8px;">
+        LINE通知イメージ
+      </div>
+      <div style="font-size: 0.85rem; opacity: 0.7; letter-spacing: 0.02em;">
+        片付け日にリマインド → 写真を送る → 完了
+      </div>
+    </div>
+
+    <div class="line-mock">
+      <div class="line-header">片付けサポートBot</div>
+      <div class="line-chat">
+        <div class="line-message bot">
+          <div class="line-bubble">
+            おはようございます！<br><br>
+            今日は<strong>「キッチン」</strong>の片付け日です🍳<br><br>
+            ポイント：使っていない調理器具は思い切って手放しましょう！
+          </div>
+        </div>
+
+        <div class="line-message bot">
+          <div class="line-bubble">
+            まず<strong>ビフォー写真</strong>を送ってから片付けを始めてください📸
+          </div>
+          <div class="line-buttons">
+            <div class="line-btn">今日は難しい→日程変更</div>
+          </div>
+        </div>
+
+        <div class="line-message user">
+          <div class="line-bubble">
+            📷 [ビフォー写真]
+          </div>
+        </div>
+
+        <div class="line-message bot">
+          <div class="line-bubble">
+            ビフォー写真を受け取りました！<br><br>
+            それでは片付けスタート！💪<br>
+            終わったら<strong>アフター写真</strong>を送ってください
+          </div>
+        </div>
+
+        <div class="line-message user">
+          <div class="line-bubble">
+            📷 [アフター写真]
+          </div>
+        </div>
+
+        <div class="line-message bot">
+          <div class="line-bubble">
+            お疲れさまでした！🎉<br><br>
+            アフター写真を受け取りました！<br><br>
+            講師が確認後、完了通知をお送りします。<br>
+            <span style="font-size: 0.85rem; color: #888;">（通常翌朝までに確認します）</span>
+          </div>
+        </div>
+
+        <!-- 講師チェック後 -->
+        <div style="text-align: center; padding: 15px 0; color: #888; font-size: 0.8rem;">
+          ── 講師がチェック後 ──
+        </div>
+
+        <div class="line-message bot">
+          <div class="line-bubble" style="background: #f5f5f5; border: 1px solid #1a1a1a;">
+            <strong>OK</strong><br><br>
+            キッチンの片付け、お疲れさまでした！<br>
+            とてもスッキリしましたね<br><br>
+            これで<strong>4/8箇所</strong>完了です！<br>
+            次の片付けに進みましょう！
+          </div>
+        </div>
+
+        <div class="line-message bot">
+          <div class="line-bubble">
+            次の予定は<br>
+            <strong>🚿 洗面所・浴室</strong><br>
+            <strong style="color: #1a1a1a;">1月11日（土）10:00〜</strong><br><br>
+            前日にまたリマインドしますね！
+          </div>
+          <div class="line-buttons">
+            <div class="line-btn">予定を確認する</div>
+            <div class="line-btn">日程を変更したい</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <div class="card-title">片付け完了までの流れ</div>
+      <div style="margin-top: 15px;">
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #1a1a1a; color: white; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 400; margin-right: 10px;">1</div>
+          <span style="font-size: 0.9rem;">生徒が<strong>ビフォー写真</strong>を送信</span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #1a1a1a; color: white; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 400; margin-right: 10px;">2</div>
+          <span style="font-size: 0.9rem;">片付けを実行</span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #1a1a1a; color: white; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 400; margin-right: 10px;">3</div>
+          <span style="font-size: 0.9rem;">生徒が<strong>アフター写真</strong>を送信 → <span style="color: #888;">一時完了</span></span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 12px;">
+          <div style="width: 24px; height: 24px; background: #f5f5f5; color: #1a1a1a; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 400; margin-right: 10px; border: 1px solid #1a1a1a;">4</div>
+          <span style="font-size: 0.9rem;"><strong>講師が翌朝チェック</strong>してOK</span>
+        </div>
+        <div style="display: flex; align-items: center;">
+          <div style="width: 24px; height: 24px; background: #000; color: white; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 400; margin-right: 10px;">✓</div>
+          <span style="font-size: 0.9rem;">生徒に完了通知 → <span style="color: #1a1a1a; font-weight: 500;">正式完了</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- API接続 -->
+  <script src="/scripts/api.js"></script>
+
+  <script>
+    // 現在の役割
+    let currentRole = 'student';
+
+    // ========================================
+    // ウィザード状態管理
+    // ========================================
+    const wizardState = {
+      selectedLocations: [], // { location: string, locationIcon: string, dataLocation: string }
+      schedules: [] // { location, locationIcon, startTime, endTime }
+    };
+
+    // 選択された場所を取得して状態を更新
+    function updateSelectedLocations() {
+      const selectedOptions = document.querySelectorAll('.location-option.selected');
+      wizardState.selectedLocations = [];
+
+      selectedOptions.forEach(option => {
+        const dataLocation = option.getAttribute('data-location');
+        const icon = option.querySelector('.loc-icon').textContent.trim();
+        const name = option.querySelector('.loc-name').textContent.trim();
+
+        // その他の場合はカスタム入力を使用
+        if (dataLocation === 'other') {
+          const customInput = document.querySelector('#customInput input');
+          const customName = customInput ? customInput.value.trim() : '';
+          if (customName) {
+            wizardState.selectedLocations.push({
+              location: customName,
+              locationIcon: '✏️',
+              dataLocation: 'other'
+            });
+          }
+        } else {
+          wizardState.selectedLocations.push({
+            location: name,
+            locationIcon: icon,
+            dataLocation: dataLocation
+          });
+        }
+      });
+
+      // 選択数を更新（ドロップダウン内）
+      const countEl = document.getElementById('selectedCount');
+      if (countEl) {
+        countEl.textContent = wizardState.selectedLocations.length + '箇所選択中';
+      }
+
+      // 選択数を更新（ヘッダーバッジ）
+      const badgeEl = document.getElementById('selectedCountBadge');
+      if (badgeEl) {
+        const count = wizardState.selectedLocations.length;
+        badgeEl.textContent = count + '箇所';
+        badgeEl.style.background = count > 0 ? '#1a1a1a' : '#888';
+      }
+
+      // 選択済み表示を更新
+      updateSelectedLocationsDisplay();
+    }
+
+    // 選択済み場所の表示を更新
+    function updateSelectedLocationsDisplay() {
+      const container = document.getElementById('selectedLocations');
+      if (!container) return;
+
+      if (wizardState.selectedLocations.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      container.innerHTML = `
+        <div style="font-weight: 500; color: #1a1a1a; margin-bottom: 8px; font-size: 0.85rem;">選択中: ${wizardState.selectedLocations.length}箇所</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${wizardState.selectedLocations.map(loc => `
+            <span style="background: white; border: 1px solid #1a1a1a; color: #1a1a1a; padding: 4px 12px; border-radius: 2px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+              ${loc.locationIcon} ${loc.location} <span onclick="removeSelectedLocation('${loc.dataLocation}')" style="cursor: pointer; opacity: 0.7;">×</span>
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // 選択済み場所を削除
+    function removeSelectedLocation(dataLocation) {
+      const option = document.querySelector(`.location-option[data-location="${dataLocation}"]`);
+      if (option) {
+        option.classList.remove('selected');
+      }
+      updateSelectedLocations();
+    }
+
+    // Step 2の日時設定カードを動的生成
+    function generateStep2Content() {
+      const container = document.getElementById('step2-locations-container');
+      if (!container) return;
+
+      // 今日の日付をベースに計算
+      const today = new Date();
+
+      container.innerHTML = wizardState.selectedLocations.map((loc, index) => {
+        // 各場所に1週間ずつずらした日付を設定
+        const defaultDate = new Date(today);
+        defaultDate.setDate(today.getDate() + (7 * (index + 1)));
+        const dateStr = defaultDate.toISOString().split('T')[0];
+
+        return `
+          <div class="schedule-input-card" data-location="${loc.dataLocation}" style="border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span style="font-size: 1.3rem;">${loc.locationIcon}</span>
+              <span style="font-weight: 600;">${loc.location}</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+              <input type="date" class="schedule-date" value="${dateStr}" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; flex: 1; min-width: 140px;">
+              <div style="display: flex; gap: 5px; align-items: center; flex: 1; min-width: 200px;">
+                <input type="time" class="schedule-start-time" value="09:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; flex: 1;">
+                <span style="color: #666;">〜</span>
+                <input type="time" class="schedule-end-time" value="13:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; flex: 1;">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Step 3の確認内容を動的生成
+    function generateStep3Content() {
+      // Step 2から日時情報を収集
+      wizardState.schedules = [];
+      const cards = document.querySelectorAll('.schedule-input-card');
+
+      cards.forEach(card => {
+        const dataLocation = card.getAttribute('data-location');
+        const locData = wizardState.selectedLocations.find(l => l.dataLocation === dataLocation);
+        if (!locData) return;
+
+        const dateInput = card.querySelector('.schedule-date');
+        const startInput = card.querySelector('.schedule-start-time');
+        const endInput = card.querySelector('.schedule-end-time');
+
+        if (dateInput && startInput && endInput) {
+          const date = dateInput.value;
+          const startTime = startInput.value;
+          const endTime = endInput.value;
+
+          // ISO形式に変換
+          const startISO = new Date(`${date}T${startTime}:00`).toISOString();
+          const endISO = new Date(`${date}T${endTime}:00`).toISOString();
+
+          wizardState.schedules.push({
+            location: locData.location,
+            locationIcon: locData.locationIcon,
+            startTime: startISO,
+            endTime: endISO,
+            displayDate: formatDisplayDate(date, startTime, endTime)
+          });
+        }
+      });
+
+      // 確認画面に表示
+      const container = document.getElementById('step3-confirmation-container');
+      if (!container) return;
+
+      container.innerHTML = wizardState.schedules.map(schedule => `
+        <div style="background: white; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span>${schedule.locationIcon}</span>
+            <span style="font-weight: 600; flex: 1;">${schedule.location}</span>
+          </div>
+          <div style="font-size: 0.9rem; color: #333; padding-left: 28px;">
+            ${schedule.displayDate}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 日付を表示用にフォーマット
+    function formatDisplayDate(dateStr, startTime, endTime) {
+      const date = new Date(dateStr);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekday = weekdays[date.getDay()];
+      return `${month}月${day}日（${weekday}）${startTime} 〜 ${endTime}`;
+    }
+
+    // 役割を切り替える
+    function switchRole(role) {
+      currentRole = role;
+
+      // ボタンのアクティブ状態を更新
+      document.getElementById('role-student').classList.toggle('active', role === 'student');
+      document.getElementById('role-teacher').classList.toggle('active', role === 'teacher');
+
+      // ナビゲーションを切り替え
+      document.getElementById('nav-student').style.display = role === 'student' ? 'flex' : 'none';
+      document.getElementById('nav-teacher').style.display = role === 'teacher' ? 'flex' : 'none';
+
+      // 各役割のデフォルトセクションを表示
+      const defaultSection = role === 'student' ? 'student-task' : 'daily-tasks';
+      document.querySelectorAll('.proto-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(defaultSection).classList.add('active');
+
+      // ナビゲーションボタンのアクティブ状態をリセット
+      const activeNav = document.getElementById(role === 'student' ? 'nav-student' : 'nav-teacher');
+      activeNav.querySelectorAll('button').forEach((b, i) => {
+        b.classList.toggle('active', i === 0);
+      });
+
+      // 講師モードの場合はダッシュボードを読み込み
+      if (role === 'teacher') {
+        loadTeacherDashboard();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showSection(id) {
+      document.querySelectorAll('.proto-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+
+      // 現在のナビゲーション内のボタンのみ更新
+      const activeNavId = currentRole === 'student' ? 'nav-student' : 'nav-teacher';
+      document.getElementById(activeNavId).querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      if (event && event.target) {
+        event.target.classList.add('active');
+      }
+
+      // 講師用セクションの場合はデータを読み込み
+      if (id === 'daily-tasks') {
+        loadTeacherDashboard();
+      } else if (id === 'dashboard') {
+        loadStudentsProgress();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ========================================
+    // スケジュール登録処理
+    // ========================================
+    async function registerSchedule() {
+      // ログイン状態を確認
+      const user = window.scheduleAPI ? window.scheduleAPI.getCurrentUser() : null;
+
+      if (!user) {
+        alert('スケジュールを登録するにはログインが必要です');
+        return;
+      }
+
+      // 登録ボタンを無効化
+      const registerBtn = document.querySelector('#wizard-step-3 .btn-primary');
+      if (registerBtn) {
+        registerBtn.disabled = true;
+        registerBtn.textContent = '登録中...';
+      }
+
+      try {
+        // APIに送信するデータを準備
+        const schedulesToCreate = wizardState.schedules.map(s => ({
+          location: s.location,
+          locationIcon: s.locationIcon,
+          startTime: s.startTime,
+          endTime: s.endTime
+        }));
+
+        // API呼び出し
+        const result = await window.scheduleAPI.createSchedulesBulk(schedulesToCreate);
+
+        if (result.success) {
+          alert(`${result.created}件のスケジュールを登録しました！`);
+
+          // ウィザード状態をリセット
+          wizardState.selectedLocations = [];
+          wizardState.schedules = [];
+
+          // 場所選択をすべて解除
+          document.querySelectorAll('.location-option.selected').forEach(opt => {
+            opt.classList.remove('selected');
+          });
+          updateSelectedLocationsDisplay();
+
+          // ウィザードをStep 1にリセット
+          currentWizardStep = 1;
+          goToStep(1);
+
+          // 登録済み予定タブに遷移
+          showStudentSubtab('registered');
+
+          // 登録済み予定を再読み込み
+          loadRegisteredSchedules();
+        } else {
+          throw new Error(result.error || '登録に失敗しました');
+        }
+      } catch (error) {
+        console.error('スケジュール登録エラー:', error);
+        alert('登録に失敗しました: ' + error.message);
+      } finally {
+        // 登録ボタンを復元
+        if (registerBtn) {
+          registerBtn.disabled = false;
+          registerBtn.textContent = 'この内容で登録する';
+        }
+      }
+    }
+
+    // 登録済みスケジュールを読み込み
+    async function loadRegisteredSchedules() {
+      const container = document.getElementById('registered-schedules-container');
+      if (!container) return;
+
+      const user = window.scheduleAPI ? window.scheduleAPI.getCurrentUser() : null;
+      if (!user) {
+        container.innerHTML = '<p style="color: #666; text-align: center;">ログインすると登録済みのスケジュールが表示されます</p>';
+        return;
+      }
+
+      try {
+        const schedules = await window.scheduleAPI.getSchedules();
+
+        if (schedules.length === 0) {
+          container.innerHTML = '<p style="color: #666; text-align: center;">登録済みのスケジュールはありません</p>';
+          return;
+        }
+
+        // ソート: 完了していないものを上に、その中で日付が近い順に
+        // 完了したものは下に、日付が新しい順に
+        const now = new Date();
+        schedules.sort((a, b) => {
+          const aFinished = a.status === 'completed' || a.status === 'cancelled';
+          const bFinished = b.status === 'completed' || b.status === 'cancelled';
+
+          // 完了・キャンセル以外を上に
+          if (aFinished !== bFinished) {
+            return aFinished ? 1 : -1;
+          }
+
+          const aTime = new Date(a.startTime);
+          const bTime = new Date(b.startTime);
+
+          if (!aFinished) {
+            // 未完了: 開始時刻が近い順（昇順）
+            return aTime - bTime;
+          } else {
+            // 完了・キャンセル: 最近のもの順（降順）
+            return bTime - aTime;
+          }
+        });
+
+        container.innerHTML = schedules.map(schedule => {
+          const startDate = new Date(schedule.startTime);
+          const endDate = new Date(schedule.endTime);
+          const displayDate = formatScheduleDate(startDate, endDate);
+          const icon = schedule.locationIcon || '📋';
+          const location = schedule.location || schedule.title || '予定';
+
+          // ステータスに応じた表示
+          const status = schedule.status || 'scheduled';
+          let statusBadge = '';
+          let actionButton = '';
+          let borderColor = '#e0e0e0';
+
+          if (status === 'completed') {
+            statusBadge = '<span style="background: #1a1a1a; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">完了</span>';
+            borderColor = '#1a1a1a';
+          } else if (status === 'cancelled') {
+            statusBadge = '<span style="background: #9ca3af; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">キャンセル</span>';
+            borderColor = '#9ca3af';
+          } else if (status === 'pending_approval') {
+            statusBadge = '<span style="background: #059669; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">確認待ち</span>';
+            borderColor = '#059669';
+          } else if (status === 'before_submitted') {
+            statusBadge = '<span style="background: #f59e0b; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">片付け中</span>';
+            actionButton = `
+              <button class="btn btn-primary btn-sm" style="width: 100%; margin-top: 10px;" onclick="submitAfterPhotoFromUI('${schedule.id}', this)">
+                📷 アフター写真を送信
+              </button>
+            `;
+            borderColor = '#f59e0b';
+          } else {
+            // scheduled
+            statusBadge = '<span style="background: #f5f5f5; color: #666; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem; border: 1px solid #e0e0e0;">予定</span>';
+            actionButton = `
+              <div style="margin-top: 10px;">
+                <button class="btn btn-secondary btn-sm" style="width: 100%;" onclick="submitBeforePhotoFromUI('${schedule.id}', this)">
+                  📷 ビフォー写真を送信（片付け開始）
+                </button>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                  <button style="background: none; border: none; color: #888; font-size: 0.75rem; padding: 4px 8px; cursor: pointer; text-decoration: underline;" onclick="editScheduleFromUI('${schedule.id}')">
+                    変更
+                  </button>
+                  <button style="background: none; border: none; color: #999; font-size: 0.75rem; padding: 4px 8px; cursor: pointer;" onclick="cancelScheduleFromUI('${schedule.id}', this)">
+                    キャンセル
+                  </button>
+                </div>
+              </div>
+            `;
+          }
+
+          return `
+            <div style="background: #f8f8f8; border-radius: 10px; padding: 15px; margin-bottom: 10px; border: 2px solid ${borderColor};">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span>${icon}</span>
+                  <span style="font-weight: 600;">${location}</span>
+                </div>
+                ${statusBadge}
+              </div>
+              <div style="font-size: 0.9rem; color: #666; margin-bottom: 8px; padding-left: 26px;">
+                ${displayDate}
+              </div>
+              ${actionButton}
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('スケジュール読み込みエラー:', error);
+        container.innerHTML = '<p style="color: #666; text-align: center;">スケジュールの読み込みに失敗しました</p>';
+      }
+    }
+
+    // ビフォー写真送信（UI用）- ファイル選択対応
+    async function submitBeforePhotoFromUI(scheduleId, button) {
+      // ファイル選択ダイアログを開く
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment'; // カメラを直接起動（モバイル）
+
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '送信中...';
+
+        try {
+          const result = await window.scheduleAPI.submitBeforePhoto(scheduleId, file);
+
+          if (result.success) {
+            showSaveSuccess(button, 'ビフォー写真を送信しました！片付けを始めましょう');
+            setTimeout(() => loadRegisteredSchedules(), 1000);
+          } else {
+            alert('送信に失敗しました: ' + (result.error || '不明なエラー'));
+            button.disabled = false;
+            button.innerHTML = originalText;
+          }
+        } catch (error) {
+          console.error('ビフォー写真送信エラー:', error);
+          alert('送信に失敗しました');
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      };
+
+      input.click();
+    }
+
+    // アフター写真送信（UI用）- ファイル選択対応
+    async function submitAfterPhotoFromUI(scheduleId, button) {
+      // ファイル選択ダイアログを開く
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment'; // カメラを直接起動（モバイル）
+
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '送信中...';
+
+        try {
+          const result = await window.scheduleAPI.submitAfterPhoto(scheduleId, file);
+
+          if (result.success) {
+            showSaveSuccess(button, 'アフター写真を送信しました！講師の確認をお待ちください');
+            setTimeout(() => loadRegisteredSchedules(), 1000);
+          } else {
+            alert('送信に失敗しました: ' + (result.error || '不明なエラー'));
+            button.disabled = false;
+            button.innerHTML = originalText;
+          }
+        } catch (error) {
+          console.error('アフター写真送信エラー:', error);
+          alert('送信に失敗しました');
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      };
+
+      input.click();
+    }
+
+    // スケジュールをキャンセル
+    async function cancelScheduleFromUI(scheduleId, button) {
+      if (!confirm('この予定をキャンセルしますか？')) {
+        return;
+      }
+
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '処理中...';
+
+      try {
+        const result = await window.scheduleAPI.cancelSchedule(scheduleId);
+
+        if (result.success) {
+          showSaveSuccess(button, '予定をキャンセルしました');
+          setTimeout(() => loadRegisteredSchedules(), 1000);
+        } else {
+          alert('キャンセルに失敗しました: ' + (result.error || '不明なエラー'));
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      } catch (error) {
+        console.error('スケジュールキャンセルエラー:', error);
+        alert('キャンセルに失敗しました');
+        button.disabled = false;
+        button.innerHTML = originalText;
+      }
+    }
+
+    // スケジュール編集モーダルを表示
+    let editingScheduleId = null;
+    let editingScheduleData = null;
+
+    async function editScheduleFromUI(scheduleId) {
+      try {
+        // スケジュールデータを取得
+        const schedules = await window.scheduleAPI.getSchedules();
+        const schedule = schedules.find(s => s.id === scheduleId);
+
+        if (!schedule) {
+          alert('スケジュールが見つかりません');
+          return;
+        }
+
+        editingScheduleId = scheduleId;
+        editingScheduleData = schedule;
+
+        // 日時をフォーマット
+        const startDate = new Date(schedule.startTime);
+        const endDate = new Date(schedule.endTime);
+        const dateStr = startDate.toISOString().split('T')[0];
+        const startTimeStr = `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`;
+        const endTimeStr = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+
+        // モーダルを作成
+        const overlay = document.createElement('div');
+        overlay.id = 'edit-schedule-overlay';
+        overlay.style.cssText = `
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.5); z-index: 10000;
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px;
+        `;
+
+        overlay.innerHTML = `
+          <div style="background: white; border-radius: 12px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
+            <div style="padding: 20px; border-bottom: 1px solid #eee;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">予定を変更</h3>
+                <button onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888;">&times;</button>
+              </div>
+            </div>
+            <div style="padding: 20px;">
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; color: #666; margin-bottom: 6px;">片付け場所</label>
+                <select id="edit-location" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem;">
+                  <option value="クローゼット" ${schedule.location === 'クローゼット' ? 'selected' : ''}>🧥 クローゼット</option>
+                  <option value="靴箱" ${schedule.location === '靴箱' ? 'selected' : ''}>👟 靴箱</option>
+                  <option value="冷蔵庫" ${schedule.location === '冷蔵庫' ? 'selected' : ''}>🧊 冷蔵庫</option>
+                  <option value="パントリー" ${schedule.location === 'パントリー' ? 'selected' : ''}>🥫 パントリー</option>
+                  <option value="キッチン" ${schedule.location === 'キッチン' ? 'selected' : ''}>🍳 キッチン</option>
+                  <option value="リビング" ${schedule.location === 'リビング' ? 'selected' : ''}>🛋️ リビング</option>
+                  <option value="洗面所" ${schedule.location === '洗面所' ? 'selected' : ''}>🚿 洗面所</option>
+                  <option value="書類" ${schedule.location === '書類' ? 'selected' : ''}>📄 書類</option>
+                  <option value="本棚" ${schedule.location === '本棚' ? 'selected' : ''}>📚 本棚</option>
+                  <option value="デスク周り" ${schedule.location === 'デスク周り' ? 'selected' : ''}>🖥️ デスク周り</option>
+                  <option value="子供部屋" ${schedule.location === '子供部屋' ? 'selected' : ''}>🧸 子供部屋</option>
+                  <option value="玄関" ${schedule.location === '玄関' ? 'selected' : ''}>🚪 玄関</option>
+                </select>
+              </div>
+              <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.85rem; color: #666; margin-bottom: 6px;">日付</label>
+                <input type="date" id="edit-date" value="${dateStr}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box;" />
+              </div>
+              <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <div style="flex: 1;">
+                  <label style="display: block; font-size: 0.85rem; color: #666; margin-bottom: 6px;">開始時刻</label>
+                  <input type="time" id="edit-start-time" value="${startTimeStr}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box;" />
+                </div>
+                <div style="flex: 1;">
+                  <label style="display: block; font-size: 0.85rem; color: #666; margin-bottom: 6px;">終了時刻</label>
+                  <input type="time" id="edit-end-time" value="${endTimeStr}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; box-sizing: border-box;" />
+                </div>
+              </div>
+              <button onclick="saveEditedSchedule()" class="btn btn-primary" style="width: 100%;">
+                変更を保存
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+      } catch (error) {
+        console.error('スケジュール編集エラー:', error);
+        alert('編集画面を開けませんでした');
+      }
+    }
+
+    function closeEditModal() {
+      const overlay = document.getElementById('edit-schedule-overlay');
+      if (overlay) overlay.remove();
+      editingScheduleId = null;
+      editingScheduleData = null;
+    }
+
+    async function saveEditedSchedule() {
+      if (!editingScheduleId) return;
+
+      const location = document.getElementById('edit-location').value;
+      const dateStr = document.getElementById('edit-date').value;
+      const startTimeStr = document.getElementById('edit-start-time').value;
+      const endTimeStr = document.getElementById('edit-end-time').value;
+
+      if (!dateStr || !startTimeStr || !endTimeStr) {
+        alert('日時を入力してください');
+        return;
+      }
+
+      // アイコンを場所から取得
+      const locationIcons = {
+        'クローゼット': '🧥', '靴箱': '👟', '冷蔵庫': '🧊', 'パントリー': '🥫',
+        'キッチン': '🍳', 'リビング': '🛋️', '洗面所': '🚿', '書類': '📄',
+        '本棚': '📚', 'デスク周り': '🖥️', '子供部屋': '🧸', '玄関': '🚪'
+      };
+
+      const startTime = new Date(`${dateStr}T${startTimeStr}`);
+      const endTime = new Date(`${dateStr}T${endTimeStr}`);
+
+      try {
+        const result = await window.scheduleAPI.updateSchedule(editingScheduleId, {
+          location: location,
+          locationIcon: locationIcons[location] || '📋',
+          title: location,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString()
+        });
+
+        if (result.success) {
+          closeEditModal();
+          showSaveSuccess(document.body, '予定を変更しました');
+          loadRegisteredSchedules();
+        } else {
+          alert('変更に失敗しました: ' + (result.error || '不明なエラー'));
+        }
+      } catch (error) {
+        console.error('スケジュール更新エラー:', error);
+        alert('変更に失敗しました');
+      }
+    }
+
+    // スケジュール日付をフォーマット
+    function formatScheduleDate(start, end) {
+      const month = start.getMonth() + 1;
+      const day = start.getDate();
+      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+      const weekday = weekdays[start.getDay()];
+      const startTime = `${start.getHours()}:${String(start.getMinutes()).padStart(2, '0')}`;
+      const endTime = `${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`;
+      return `${month}月${day}日（${weekday}）${startTime}〜${endTime}`;
+    }
+
+    // ========================================
+    // 生徒用サブタブ切り替え
+    // ========================================
+    function showStudentSubtab(tabName) {
+      // コンテンツ切り替え
+      document.getElementById('student-subtab-new').style.display = tabName === 'new' ? 'block' : 'none';
+      document.getElementById('student-subtab-registered').style.display = tabName === 'registered' ? 'block' : 'none';
+
+      // タブスタイル更新
+      const newTab = document.getElementById('subtab-new');
+      const registeredTab = document.getElementById('subtab-registered');
+
+      if (tabName === 'new') {
+        newTab.style.borderBottomColor = '#1a1a1a';
+        newTab.style.fontWeight = '500';
+        newTab.style.color = '#1a1a1a';
+        registeredTab.style.borderBottomColor = 'transparent';
+        registeredTab.style.fontWeight = '400';
+        registeredTab.style.color = '#888';
+      } else {
+        registeredTab.style.borderBottomColor = '#1a1a1a';
+        registeredTab.style.fontWeight = '500';
+        registeredTab.style.color = '#1a1a1a';
+        newTab.style.borderBottomColor = 'transparent';
+        newTab.style.fontWeight = '400';
+        newTab.style.color = '#888';
+
+        // 登録済みタブ表示時にスケジュールを読み込み
+        loadRegisteredSchedules();
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ========================================
+    // ウィザード ステップナビゲーション
+    // ========================================
+    let currentWizardStep = 1;
+
+    function goToStep(stepNumber) {
+      // Step 1からStep 2へ移動時：選択場所を取得してStep 2を生成
+      if (currentWizardStep === 1 && stepNumber === 2) {
+        updateSelectedLocations();
+        if (wizardState.selectedLocations.length === 0) {
+          alert('片付ける場所を選択してください');
+          return;
+        }
+        generateStep2Content();
+      }
+
+      // Step 2からStep 3へ移動時：日時情報を収集してStep 3を生成
+      if (currentWizardStep === 2 && stepNumber === 3) {
+        generateStep3Content();
+      }
+
+      currentWizardStep = stepNumber;
+
+      // 全ステップを非表示
+      document.querySelectorAll('.wizard-step').forEach(step => {
+        step.style.display = 'none';
+      });
+
+      // 指定ステップを表示
+      const targetStep = document.getElementById('wizard-step-' + stepNumber);
+      if (targetStep) {
+        targetStep.style.display = 'block';
+      }
+
+      // ステップインジケーターを更新
+      document.querySelectorAll('.step-dot').forEach((dot, index) => {
+        const dotStep = index + 1;
+        if (dotStep === stepNumber) {
+          dot.style.background = '#1a1a1a';
+        } else if (dotStep < stepNumber) {
+          dot.style.background = '#1a1a1a';
+        } else {
+          dot.style.background = '#e0e0e0';
+        }
+      });
+
+      // 上にスクロール
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 順調な生徒リストの折りたたみ
+    function toggleGoodStudents() {
+      const list = document.getElementById('good-students-list');
+      const toggle = document.getElementById('good-students-toggle');
+      if (list.style.display === 'none') {
+        list.style.display = 'block';
+        toggle.style.transform = 'rotate(90deg)';
+      } else {
+        list.style.display = 'none';
+        toggle.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // 生徒フィルター（デモ用）
+    function filterStudents(type) {
+      alert('フィルター: ' + (type === 'warning' ? '要フォロー' : type === 'stale' ? '停滞中' : '全員') + ' を表示');
+    }
+
+    // 設定画面アコーディオン
+    function toggleAccordion(name) {
+      const content = document.getElementById('accordion-' + name + '-content');
+      const toggle = document.getElementById('accordion-' + name + '-toggle');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.style.transform = 'rotate(90deg)';
+      } else {
+        content.style.display = 'none';
+        toggle.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // 場所選択プルダウンの開閉
+    let dropdownOpen = true;
+    function toggleLocationDropdown() {
+      const list = document.getElementById('locationList');
+      const arrow = document.getElementById('dropdownArrow');
+      dropdownOpen = !dropdownOpen;
+      list.style.display = dropdownOpen ? 'block' : 'none';
+      arrow.style.transform = dropdownOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
+    // 場所選択の切り替え
+    document.querySelectorAll('.location-option').forEach(option => {
+      option.addEventListener('click', function() {
+        this.classList.toggle('selected');
+
+        // その他選択時の入力欄表示
+        if (this.classList.contains('other-option')) {
+          const customInput = document.getElementById('customInput');
+          customInput.style.display = this.classList.contains('selected') ? 'block' : 'none';
+        }
+
+        // 選択状態を更新
+        updateSelectedLocations();
+      });
+    });
+
+    // 選択解除
+    function removeLocation(btn) {
+      btn.parentElement.remove();
+      // 実際のアプリでは対応するオプションのselectedも解除する
+    }
+
+    // 場所の複数選択（multi-select）
+    document.querySelectorAll('.template-item.multi-select').forEach(item => {
+      item.addEventListener('click', function() {
+        this.classList.toggle('selected');
+
+        // チェックマークの表示/非表示
+        const checkMark = this.querySelector('.check-mark');
+        if (checkMark) {
+          checkMark.style.opacity = this.classList.contains('selected') ? '1' : '0';
+        }
+
+        // 「その他」選択時は入力欄を表示
+        const customInput = document.getElementById('customInput');
+        if (this.classList.contains('other-option')) {
+          customInput.style.display = this.classList.contains('selected') ? 'block' : 'none';
+        }
+      });
+    });
+
+    // リマインドチップ選択（ON/OFF切り替え）
+    document.querySelectorAll('.remind-chip').forEach(chip => {
+      chip.addEventListener('click', function() {
+        this.classList.toggle('active');
+        this.textContent = this.classList.contains('active') ? 'ON' : 'OFF';
+      });
+    });
+
+    // メッセージテンプレート編集トグル
+    function toggleEdit(button) {
+      const container = button.closest('.message-template-item');
+      const textarea = container.querySelector('textarea');
+
+      if (textarea.disabled) {
+        // 編集モードに切り替え
+        textarea.disabled = false;
+        textarea.style.borderColor = '#1a1a1a';
+        textarea.style.background = '#fff';
+        textarea.focus();
+        button.textContent = '保存';
+        button.style.background = '#1a1a1a';
+        button.style.color = 'white';
+      } else {
+        // 保存モードに切り替え
+        textarea.disabled = true;
+        textarea.style.borderColor = '#ddd';
+        textarea.style.background = '';
+        button.textContent = '編集';
+        button.style.background = '';
+        button.style.color = '';
+        // 保存フィードバック表示
+        showSaveSuccess(container, 'メッセージを保存しました');
+      }
+    }
+
+    // 保存成功フィードバック表示
+    function showSaveSuccess(targetElement, message) {
+      // 既存のフィードバックを削除
+      const existingFeedback = document.querySelector('.save-feedback');
+      if (existingFeedback) existingFeedback.remove();
+
+      // フィードバック要素作成
+      const feedback = document.createElement('div');
+      feedback.className = 'save-feedback';
+      feedback.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1a1a1a;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideUp 0.3s ease;
+      `;
+      feedback.innerHTML = `<span style="color: #4ade80;">✓</span> ${message}`;
+      document.body.appendChild(feedback);
+
+      // 2秒後に消える
+      setTimeout(() => {
+        feedback.style.animation = 'slideDown 0.3s ease';
+        setTimeout(() => feedback.remove(), 300);
+      }, 2000);
+    }
+
+    // リマインド設定保存
+    function saveRemindSettings(button) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = '保存中...';
+
+      // 保存処理（実際のAPIはここで呼ぶ）
+      setTimeout(() => {
+        button.textContent = '✓ 保存しました';
+        button.style.background = '#059669';
+
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = originalText;
+          button.style.background = '';
+        }, 2000);
+
+        showSaveSuccess(button, 'リマインド設定を保存しました');
+      }, 500);
+    }
+
+    // メッセージテンプレート全保存
+    function saveMessageTemplates(button) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = '保存中...';
+
+      // 保存処理（実際のAPIはここで呼ぶ）
+      setTimeout(() => {
+        button.textContent = '✓ 保存しました';
+        button.style.background = '#059669';
+
+        setTimeout(() => {
+          button.disabled = false;
+          button.textContent = originalText;
+          button.style.background = '';
+        }, 2000);
+
+        showSaveSuccess(button, '全てのテンプレートを保存しました');
+      }, 500);
+    }
+
+    // リマインドタイミング追加
+    function addRemindTiming() {
+      const list = document.getElementById('remindTimingList');
+      const newItem = document.createElement('div');
+      newItem.className = 'remind-timing-item';
+      newItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f8f8; border-radius: 8px; margin-bottom: 10px;';
+      newItem.innerHTML = `
+        <div style="flex: 1;">
+          <select style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-right: 8px;">
+            <option value="before">前日</option>
+            <option value="same">当日</option>
+            <option value="minutes">〇分前</option>
+            <option value="hours">〇時間前</option>
+          </select>
+          <input type="time" value="12:00" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+        </div>
+        <span class="remind-chip active" style="cursor: default;">ON</span>
+        <button class="btn btn-sm" style="background: #fee2e2; color: #dc2626;" onclick="this.parentElement.remove()">削除</button>
+      `;
+      list.appendChild(newItem);
+    }
+
+    // 写真チェックOK
+    function approvePhoto(button) {
+      const container = button.closest('div[style*="border: 1px solid"]');
+      const badge = container.querySelector('span[style*="f5f5f5"]');
+
+      // バッジを変更
+      if (badge) {
+        badge.style.background = '#1a1a1a';
+        badge.style.color = '#fff';
+        badge.style.border = 'none';
+        badge.textContent = '完了';
+      }
+
+      // ボタンを変更
+      button.textContent = 'OK済み';
+      button.disabled = true;
+      button.style.background = '#f5f5f5';
+      button.style.color = '#666';
+
+      // コンテナのスタイル変更
+      container.style.borderColor = '#1a1a1a';
+      container.style.background = '#fafafa';
+
+      // 通知メッセージ
+      alert('OKしました。生徒に完了通知が送信されます。');
+    }
+
+    // ========================================
+    // 講師用：スケジュールデータ読み込み
+    // ========================================
+    async function loadTeacherDashboard() {
+      const user = window.scheduleAPI ? window.scheduleAPI.getCurrentUser() : null;
+      if (!user || user.role !== 'teacher') return;
+
+      try {
+        const schedules = await window.scheduleAPI.getSchedules();
+
+        // 今日の日付を表示
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        document.getElementById('today-date-display').textContent =
+          `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+        // スケジュールを分類
+        const todaySchedules = [];
+        const overdueSchedules = [];
+        const upcomingSchedules = [];
+
+        schedules.forEach(schedule => {
+          const startDate = new Date(schedule.startTime);
+          const scheduleDate = startDate.toISOString().split('T')[0];
+          const status = schedule.status || 'scheduled';
+
+          if (scheduleDate === todayStr && status !== 'completed' && status !== 'cancelled') {
+            todaySchedules.push(schedule);
+          } else if (startDate < today && status === 'scheduled') {
+            // 要フォロー: 過去の日付でまだ開始されていない予定のみ
+            // フォローアップメッセージ送信後24時間以内は非表示
+            if (schedule.followupMessages && schedule.followupMessages.length > 0) {
+              const lastMessage = schedule.followupMessages[schedule.followupMessages.length - 1];
+              const sentAt = lastMessage.sentAt?._seconds
+                ? new Date(lastMessage.sentAt._seconds * 1000)
+                : new Date(lastMessage.sentAt);
+              const hoursSinceSent = (Date.now() - sentAt.getTime()) / (1000 * 60 * 60);
+
+              // 24時間以内に送信した場合はスキップ（タスクから消す）
+              if (hoursSinceSent < 24) {
+                return; // この予定はoverdueに追加しない
+              }
+              // 24時間以上経過した場合は再度タスク化
+            }
+            overdueSchedules.push(schedule);
+          } else if (startDate > today && status !== 'completed' && status !== 'cancelled') {
+            upcomingSchedules.push(schedule);
+          }
+        });
+
+        // サマリーを更新
+        document.getElementById('today-scheduled-count').textContent = todaySchedules.length;
+        document.getElementById('overdue-count').textContent = overdueSchedules.length;
+
+        // 本日の予定を表示
+        renderTodaySchedules(todaySchedules);
+
+        // 要フォロー（期限切れ）を表示
+        renderOverdueSchedules(overdueSchedules);
+
+        // 承認待ち写真を読み込み
+        await loadPendingPhotos();
+
+      } catch (error) {
+        console.error('講師ダッシュボード読み込みエラー:', error);
+      }
+    }
+
+    // 承認待ち写真を読み込み
+    async function loadPendingPhotos() {
+      try {
+        const result = await window.scheduleAPI.getPendingPhotos();
+
+        const card = document.getElementById('pending-photos-card');
+        const container = document.getElementById('pending-photos-container');
+        const badge = document.getElementById('pending-photos-badge');
+        const countEl = document.getElementById('pending-photos-count');
+
+        if (!result.success || !result.data || result.data.length === 0) {
+          card.style.display = 'none';
+          countEl.textContent = '0';
+          return;
+        }
+
+        const pendingItems = result.data;
+        card.style.display = 'block';
+        badge.textContent = pendingItems.length + '件';
+        countEl.textContent = pendingItems.length;
+
+        container.innerHTML = pendingItems.map(item => {
+          const icon = item.locationIcon || '📋';
+          const location = item.location || item.title || '場所不明';
+          const studentName = item.studentName || '生徒不明';
+          // Firestoreのタイムスタンプ形式に対応
+          const parseTimestamp = (ts) => {
+            if (!ts) return null;
+            if (ts._seconds) return new Date(ts._seconds * 1000);
+            if (ts.seconds) return new Date(ts.seconds * 1000);
+            return new Date(ts);
+          };
+          const beforeTime = item.beforePhoto?.submittedAt ? parseTimestamp(item.beforePhoto.submittedAt).toLocaleString('ja-JP') : '';
+          const afterTime = item.afterPhoto?.submittedAt ? parseTimestamp(item.afterPhoto.submittedAt).toLocaleString('ja-JP') : '';
+
+          // 写真のURL（LINE経由かどうかで分岐）
+          const beforePhotoSrc = item.beforePhoto?.lineMessageId
+            ? `/api/photos/line-image/${item.beforePhoto.lineMessageId}`
+            : (item.beforePhoto?.url || '');
+          const afterPhotoSrc = item.afterPhoto?.lineMessageId
+            ? `/api/photos/line-image/${item.afterPhoto.lineMessageId}`
+            : (item.afterPhoto?.url || '');
+
+          return `
+            <div style="border: 2px solid #059669; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #f0fdf4;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div>
+                  <div style="font-weight: 600; color: #1a1a1a;">${studentName}</div>
+                  <div style="font-size: 0.85rem; color: #666;">${icon} ${location}</div>
+                </div>
+                <span style="background: #059669; color: #fff; padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">承認待ち</span>
+              </div>
+
+              <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+                <div style="flex: 1; background: white; border-radius: 6px; padding: 10px; border: 1px solid #e0e0e0;">
+                  <div style="font-size: 0.75rem; color: #666; margin-bottom: 4px;">ビフォー</div>
+                  ${beforePhotoSrc ? `
+                    <img src="${beforePhotoSrc}"
+                         style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                         onclick="showPhotoPopup('${beforePhotoSrc}')"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    />
+                    <div style="background: #f5f5f5; border-radius: 4px; height: 80px; display: none; align-items: center; justify-content: center; color: #888; font-size: 0.8rem;">
+                      📷 読込失敗
+                    </div>
+                  ` : `
+                    <div style="background: #f5f5f5; border-radius: 4px; height: 80px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 0.8rem;">
+                      📷 写真なし
+                    </div>
+                  `}
+                  <div style="font-size: 0.7rem; color: #888; margin-top: 4px;">${beforeTime}</div>
+                </div>
+                <div style="flex: 1; background: white; border-radius: 6px; padding: 10px; border: 1px solid #e0e0e0;">
+                  <div style="font-size: 0.75rem; color: #666; margin-bottom: 4px;">アフター</div>
+                  ${afterPhotoSrc ? `
+                    <img src="${afterPhotoSrc}"
+                         style="width: 100%; height: 120px; object-fit: cover; border-radius: 4px; cursor: pointer;"
+                         onclick="showPhotoPopup('${afterPhotoSrc}')"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    />
+                    <div style="background: #f5f5f5; border-radius: 4px; height: 80px; display: none; align-items: center; justify-content: center; color: #888; font-size: 0.8rem;">
+                      📷 読込失敗
+                    </div>
+                  ` : `
+                    <div style="background: #f5f5f5; border-radius: 4px; height: 80px; display: flex; align-items: center; justify-content: center; color: #888; font-size: 0.8rem;">
+                      📷 写真なし
+                    </div>
+                  `}
+                  <div style="font-size: 0.7rem; color: #888; margin-top: 4px;">${afterTime}</div>
+                </div>
+              </div>
+
+              <!-- 定型文コメント選択 -->
+              <div style="margin-bottom: 10px;">
+                <div style="font-size: 0.75rem; color: #666; margin-bottom: 6px;">コメントを選択（任意）:</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+                  <button type="button" class="preset-comment-btn" data-schedule="${item.id}"
+                    style="padding: 6px 12px; font-size: 0.75rem; border: 1px solid #059669; background: white; color: #059669; border-radius: 16px; cursor: pointer;"
+                    onclick="selectPresetComment('${item.id}', 'よく頑張りました！', this)">
+                    よく頑張りました！
+                  </button>
+                  <button type="button" class="preset-comment-btn" data-schedule="${item.id}"
+                    style="padding: 6px 12px; font-size: 0.75rem; border: 1px solid #059669; background: white; color: #059669; border-radius: 16px; cursor: pointer;"
+                    onclick="selectPresetComment('${item.id}', 'すっきりしましたね！', this)">
+                    すっきりしましたね！
+                  </button>
+                  <button type="button" class="preset-comment-btn" data-schedule="${item.id}"
+                    style="padding: 6px 12px; font-size: 0.75rem; border: 1px solid #059669; background: white; color: #059669; border-radius: 16px; cursor: pointer;"
+                    onclick="selectPresetComment('${item.id}', 'この調子で続けましょう！', this)">
+                    この調子で続けましょう！
+                  </button>
+                  <button type="button" class="preset-comment-btn" data-schedule="${item.id}"
+                    style="padding: 6px 12px; font-size: 0.75rem; border: 1px solid #059669; background: white; color: #059669; border-radius: 16px; cursor: pointer;"
+                    onclick="selectPresetComment('${item.id}', '素晴らしい変化ですね！', this)">
+                    素晴らしい変化ですね！
+                  </button>
+                </div>
+                <input type="text" id="approval-comment-${item.id}" placeholder="カスタムコメントを入力..."
+                       style="width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; box-sizing: border-box;" />
+              </div>
+
+              <button class="btn btn-success" style="width: 100%;" onclick="handlePhotoApproval('${item.id}', this)">
+                ✓ OKする
+              </button>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('承認待ち写真読み込みエラー:', error);
+        document.getElementById('pending-photos-count').textContent = '0';
+      }
+    }
+
+    // 定型文選択
+    function selectPresetComment(scheduleId, comment, button) {
+      const input = document.getElementById('approval-comment-' + scheduleId);
+      if (input) {
+        input.value = comment;
+      }
+      // 選択状態をトグル
+      const allBtns = document.querySelectorAll(`.preset-comment-btn[data-schedule="${scheduleId}"]`);
+      allBtns.forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#059669';
+      });
+      // 同じボタンを再クリックで解除
+      if (input.value === comment && button.style.background !== 'white') {
+        input.value = '';
+        button.style.background = 'white';
+        button.style.color = '#059669';
+      } else {
+        button.style.background = '#059669';
+        button.style.color = 'white';
+      }
+    }
+
+    // 写真承認処理
+    async function handlePhotoApproval(scheduleId, button) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = '処理中...';
+
+      // コメントを取得
+      const commentInput = document.getElementById('approval-comment-' + scheduleId);
+      const comment = commentInput?.value?.trim() || '';
+
+      try {
+        const result = await window.scheduleAPI.approvePhoto(scheduleId, comment);
+
+        if (result.success) {
+          // 成功したら親要素を非表示に
+          const card = button.closest('div[style*="border: 2px solid #059669"]');
+          card.style.opacity = '0.5';
+          card.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #059669;">
+              <div style="font-size: 1.5rem; margin-bottom: 8px;">✓</div>
+              <div style="font-weight: 500;">承認完了</div>
+              <div style="font-size: 0.8rem; color: #666;">生徒に完了通知が送信されました</div>
+            </div>
+          `;
+
+          // カウントを更新
+          const countEl = document.getElementById('pending-photos-count');
+          const currentCount = parseInt(countEl.textContent) || 0;
+          countEl.textContent = Math.max(0, currentCount - 1);
+
+          showSaveSuccess(card, '写真を承認しました');
+        } else {
+          alert('承認に失敗しました: ' + (result.error || '不明なエラー'));
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      } catch (error) {
+        console.error('写真承認エラー:', error);
+        alert('承認に失敗しました');
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
+    function renderTodaySchedules(schedules) {
+      const container = document.getElementById('today-schedules-container');
+      const badge = document.getElementById('today-schedule-badge');
+      badge.textContent = schedules.length + '件';
+
+      if (schedules.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">本日の予定はありません</p>';
+        return;
+      }
+
+      container.innerHTML = schedules.map(schedule => {
+        const startDate = new Date(schedule.startTime);
+        const endDate = new Date(schedule.endTime);
+        const timeStr = `${startDate.getHours()}:${String(startDate.getMinutes()).padStart(2, '0')}〜${endDate.getHours()}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+        const icon = schedule.locationIcon || '📋';
+        const location = schedule.location || schedule.title || '予定';
+        const studentName = schedule.studentName || '生徒未設定';
+        const status = schedule.status === 'completed' ? '完了' : '予定';
+        const statusStyle = schedule.status === 'completed'
+          ? 'background: #1a1a1a; color: #fff;'
+          : 'background: #f5f5f5; color: #666; border: 1px solid #e0e0e0;';
+
+        return `
+          <div style="border: 1px solid #e0e0e0; border-radius: 4px; padding: 15px; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div>
+                <div style="font-weight: 500;">${studentName}</div>
+                <div style="font-size: 0.85rem; color: #666;">${icon} ${location}</div>
+              </div>
+              <span style="${statusStyle} padding: 4px 10px; border-radius: 2px; font-size: 0.7rem;">${status}</span>
+            </div>
+            <div style="font-size: 0.85rem; color: #888;">${timeStr}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderOverdueSchedules(schedules) {
+      const container = document.getElementById('overdue-schedules-container');
+      const badge = document.getElementById('overdue-badge');
+      badge.textContent = schedules.length + '件';
+
+      if (schedules.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">期限切れの予定はありません</p>';
+        return;
+      }
+
+      container.innerHTML = schedules.map(schedule => {
+        const startDate = new Date(schedule.startTime);
+        const dateStr = `${startDate.getMonth() + 1}/${startDate.getDate()}`;
+        const icon = schedule.locationIcon || '📋';
+        const location = schedule.location || schedule.title || '予定';
+        const studentName = schedule.studentName || '生徒未設定';
+        const studentId = schedule.studentId || '';
+
+        // フォローアップ履歴を構築
+        let historyHtml = '';
+        if (schedule.followupMessages && schedule.followupMessages.length > 0) {
+          const historyItems = schedule.followupMessages.map(msg => {
+            const sentAt = msg.sentAt?._seconds
+              ? new Date(msg.sentAt._seconds * 1000)
+              : new Date(msg.sentAt);
+            const dateTimeStr = sentAt.toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return `<div style="font-size: 0.75rem; color: #666; padding: 4px 0; border-bottom: 1px dashed #e0e0e0;">
+              <span style="color: #888;">${dateTimeStr}</span>: ${msg.message}
+            </div>`;
+          }).join('');
+          historyHtml = `
+            <div style="margin-bottom: 10px; background: #f5f5f5; border-radius: 4px; padding: 8px;">
+              <div style="font-size: 0.7rem; color: #888; margin-bottom: 4px; font-weight: 500;">📋 送信履歴（${schedule.followupMessages.length}回）</div>
+              ${historyItems}
+            </div>
+          `;
+        }
+
+        return `
+          <div style="background: #fafafa; border-radius: 4px; padding: 15px; margin-bottom: 10px; border: 1px solid #1a1a1a;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div>
+                <div style="font-weight: 500;">${studentName}</div>
+                <div style="font-size: 0.85rem; color: #666;">${icon} ${location}（${dateStr}予定）</div>
+              </div>
+              <span style="color: #1a1a1a; font-size: 0.8rem;">未完了</span>
+            </div>
+            ${historyHtml}
+            ${studentId ? `
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                <input type="text" id="followup-msg-${schedule.id}" placeholder="メッセージを入力..."
+                       style="width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.9rem; margin-bottom: 8px; box-sizing: border-box;" />
+                <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="sendFollowupFromUI('${studentId}', '${schedule.id}', this)">
+                  📩 LINEでメッセージ送信
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // フォローアップメッセージ送信
+    async function sendFollowupFromUI(studentId, scheduleId, button) {
+      const input = document.getElementById('followup-msg-' + scheduleId);
+      const message = input?.value?.trim();
+
+      if (!message) {
+        alert('メッセージを入力してください');
+        return;
+      }
+
+      const originalText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '送信中...';
+
+      try {
+        const result = await window.scheduleAPI.sendFollowupMessage(studentId, message, scheduleId);
+
+        if (result.success) {
+          showSaveSuccess(button, 'メッセージを送信しました');
+          input.value = '';
+          button.disabled = false;
+          button.innerHTML = originalText;
+        } else {
+          alert('送信に失敗しました: ' + (result.error || '不明なエラー'));
+          button.disabled = false;
+          button.innerHTML = originalText;
+        }
+      } catch (error) {
+        console.error('フォローアップ送信エラー:', error);
+        alert('送信に失敗しました');
+        button.disabled = false;
+        button.innerHTML = originalText;
+      }
+    }
+
+    // 生徒の進捗を読み込み
+    async function loadStudentsProgress() {
+      const user = window.scheduleAPI ? window.scheduleAPI.getCurrentUser() : null;
+      if (!user || user.role !== 'teacher') return;
+
+      try {
+        const schedules = await window.scheduleAPI.getSchedules();
+
+        // 生徒ごとにスケジュールを集計
+        const studentMap = new Map();
+
+        schedules.forEach(schedule => {
+          const studentId = schedule.studentId || 'unknown';
+          const studentName = schedule.studentName || '生徒未設定';
+
+          if (!studentMap.has(studentId)) {
+            studentMap.set(studentId, {
+              id: studentId,
+              name: studentName,
+              schedules: [],
+              completed: 0,
+              total: 0
+            });
+          }
+
+          const student = studentMap.get(studentId);
+          student.schedules.push(schedule);
+          student.total++;
+          if (schedule.status === 'completed') {
+            student.completed++;
+          }
+        });
+
+        // 統計を計算
+        const students = Array.from(studentMap.values());
+        const totalSchedules = schedules.length;
+        const completedSchedules = schedules.filter(s => s.status === 'completed').length;
+
+        // サマリーを更新
+        document.getElementById('student-count').textContent = students.length;
+        document.getElementById('total-schedule-count').textContent = totalSchedules;
+        document.getElementById('completed-count').textContent = completedSchedules;
+
+        // 生徒一覧を表示
+        renderStudentsProgress(students);
+
+      } catch (error) {
+        console.error('生徒進捗読み込みエラー:', error);
+      }
+    }
+
+    function renderStudentsProgress(students) {
+      const container = document.getElementById('students-progress-container');
+
+      if (students.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">登録されている生徒がいません</p>';
+        return;
+      }
+
+      // 進捗率でソート（低い順）
+      students.sort((a, b) => {
+        const rateA = a.total > 0 ? a.completed / a.total : 0;
+        const rateB = b.total > 0 ? b.completed / b.total : 0;
+        return rateA - rateB;
+      });
+
+      container.innerHTML = students.map(student => {
+        const progressRate = student.total > 0 ? Math.round((student.completed / student.total) * 100) : 0;
+        const today = new Date();
+
+        // 次の予定を取得
+        const upcomingSchedules = student.schedules
+          .filter(s => new Date(s.startTime) > today && s.status !== 'completed')
+          .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+        const nextSchedule = upcomingSchedules[0];
+        let nextInfo = '';
+        if (nextSchedule) {
+          const nextDate = new Date(nextSchedule.startTime);
+          const icon = nextSchedule.locationIcon || '📋';
+          const location = nextSchedule.location || nextSchedule.title || '予定';
+          nextInfo = `次回: ${nextDate.getMonth() + 1}/${nextDate.getDate()} ${icon} ${location}`;
+        } else if (student.completed === student.total && student.total > 0) {
+          nextInfo = '全て完了';
+        } else {
+          nextInfo = '予定なし';
+        }
+
+        // ステータスバッジ
+        let statusBadge = '';
+        let borderStyle = 'border: 1px solid #e5e5e5;';
+        if (student.completed === student.total && student.total > 0) {
+          statusBadge = '<span class="student-status status-complete">完了</span>';
+          borderStyle = 'border: 2px solid #1a1a1a;';
+        } else if (progressRate >= 50) {
+          statusBadge = '<span class="student-status status-good">順調</span>';
+        } else if (student.total > 0) {
+          statusBadge = '<span class="student-status status-warning">進行中</span>';
+        }
+
+        return `
+          <div class="card" style="${borderStyle} margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; background: #f5f5f5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">👤</div>
+              <div style="flex: 1;">
+                <div style="font-weight: 500; margin-bottom: 4px;">${student.name}</div>
+                <div style="font-size: 0.85rem; color: #666;">${student.completed}/${student.total} 完了 - ${nextInfo}</div>
+              </div>
+              ${statusBadge}
+            </div>
+            <div style="margin-top: 12px;">
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 4px;">
+                <span>進捗</span>
+                <span>${progressRate}%</span>
+              </div>
+              <div style="background: #f0f0f0; border-radius: 4px; height: 6px; overflow: hidden;">
+                <div style="background: #1a1a1a; height: 100%; width: ${progressRate}%; transition: width 0.3s;"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ========================================
+    // ログイン・ログアウト処理
+    // ========================================
+    async function handleGoogleLogin() {
+      const loginBtn = document.getElementById('google-login-btn');
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'ログイン中...';
+
+      try {
+        const user = await window.scheduleAPI.startGoogleLogin(() => {
+          // ポップアップが閉じた時
+          loginBtn.disabled = false;
+          loginBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Googleでログイン
+          `;
+        });
+
+        if (user) {
+          updateLoginUI(user);
+        }
+      } catch (error) {
+        console.error('ログインエラー:', error);
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Googleでログイン
+        `;
+      }
+    }
+
+    async function handleLogout() {
+      await window.scheduleAPI.logout();
+      showLoggedOutUI();
+    }
+
+    function updateLoginUI(user) {
+      document.getElementById('login-prompt').style.display = 'none';
+      document.getElementById('logged-in-user').style.display = 'block';
+      document.getElementById('user-display-name').textContent = user.displayName || user.email || 'ログイン中';
+
+      // 役割に応じて表示を制御
+      const isTeacher = user.role === 'teacher';
+
+      // 役割切り替えボタンは常に非表示（それぞれの役割の画面のみ表示）
+      document.getElementById('role-toggle').style.display = 'none';
+
+      // ナビゲーション制御
+      if (isTeacher) {
+        // 講師：講師管理画面のみ表示
+        document.getElementById('nav-student').style.display = 'none';
+        document.getElementById('nav-teacher').style.display = 'flex';
+        currentRole = 'teacher';
+
+        // 講師用のデフォルトセクションを表示
+        document.querySelectorAll('.proto-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('daily-tasks').classList.add('active');
+
+        // ダッシュボードを読み込み
+        loadTeacherDashboard();
+      } else {
+        // 生徒：生徒画面のみ表示
+        document.getElementById('nav-student').style.display = 'flex';
+        document.getElementById('nav-teacher').style.display = 'none';
+        currentRole = 'student';
+
+        // 生徒用のデフォルトセクションを表示
+        document.querySelectorAll('.proto-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('student-task').classList.add('active');
+      }
+    }
+
+    // 未ログイン時のUI表示
+    function showLoggedOutUI() {
+      document.getElementById('login-prompt').style.display = 'block';
+      document.getElementById('logged-in-user').style.display = 'none';
+      document.getElementById('role-toggle').style.display = 'none';
+
+      // 生徒用画面のみ表示（デモモード）
+      document.getElementById('nav-student').style.display = 'flex';
+      document.getElementById('nav-teacher').style.display = 'none';
+      currentRole = 'student';
+    }
+
+    // ========================================
+    // 初期化処理
+    // ========================================
+    document.addEventListener('DOMContentLoaded', async function() {
+      // 初期選択されている場所を状態に反映
+      updateSelectedLocations();
+
+      // 初期状態：未ログインUI
+      showLoggedOutUI();
+
+      // ログイン状態を確認
+      if (window.scheduleAPI) {
+        try {
+          const user = await window.scheduleAPI.checkLoginStatus();
+          if (user) {
+            updateLoginUI(user);
+          }
+        } catch (error) {
+          console.error('ログイン状態確認エラー:', error);
+        }
+      }
+    });
+
+    // 写真拡大ポップアップ
+    function showPhotoPopup(src) {
+      const overlay = document.createElement('div');
+      overlay.id = 'photo-popup-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.9);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        cursor: pointer;
+      `;
+      overlay.onclick = () => overlay.remove();
+
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = `
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      `;
+
+      const closeBtn = document.createElement('div');
+      closeBtn.innerHTML = '✕';
+      closeBtn.style.cssText = `
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+      `;
+
+      overlay.appendChild(img);
+      overlay.appendChild(closeBtn);
+      document.body.appendChild(overlay);
+    }
+  </script>
 </body>
 </html>
