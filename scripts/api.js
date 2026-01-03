@@ -2,8 +2,10 @@
  * バックエンドAPI連携サービス
  */
 
-// 同一オリジンで配信するため相対パスを使用
-const API_BASE = '/api';
+// 開発環境では localhost:3001、本番環境では相対パスを使用
+const API_BASE = window.location.port === '5500' || window.location.port === '5501'
+  ? 'http://localhost:3001/api'
+  : '/api';
 
 // 現在ログイン中のユーザー情報
 let currentUser = null;
@@ -244,12 +246,35 @@ async function deleteSchedule(id) {
 }
 
 /**
+ * スケジュールをキャンセル
+ */
+async function cancelSchedule(id) {
+  const result = await apiRequest(`/schedules/${id}/cancel`, {
+    method: 'POST'
+  });
+  return result;
+}
+
+/**
  * Googleカレンダーからアプリに同期
  */
 async function syncFromGoogleCalendar(userId) {
   const result = await apiRequest('/schedules/sync-from-google', {
     method: 'POST',
     body: JSON.stringify({ userId })
+  });
+  return result;
+}
+
+/**
+ * スケジュールを一括登録（ウィザード用）
+ * @param {Array} schedules - 登録するスケジュールの配列
+ *   各要素: { location, locationIcon, startTime, endTime }
+ */
+async function createSchedulesBulk(schedules) {
+  const result = await apiRequest('/schedules/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ schedules })
   });
   return result;
 }
@@ -312,6 +337,112 @@ async function checkLineStatus() {
   return result;
 }
 
+// ========================================
+// 写真関連API（ビフォーアフター）
+// ========================================
+
+/**
+ * ビフォー写真を送信（ファイルアップロード対応）
+ */
+async function submitBeforePhoto(scheduleId, photoFile = null, comment = '') {
+  const url = `${API_BASE}/photos/before/${scheduleId}`;
+
+  if (photoFile) {
+    // ファイルがある場合はFormDataで送信
+    const formData = new FormData();
+    formData.append('photo', photoFile);
+    formData.append('comment', comment);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+    return await response.json();
+  } else {
+    // ファイルがない場合は従来通り
+    return await apiRequest(`/photos/before/${scheduleId}`, {
+      method: 'POST',
+      body: JSON.stringify({ comment })
+    });
+  }
+}
+
+/**
+ * アフター写真を送信（ファイルアップロード対応）
+ */
+async function submitAfterPhoto(scheduleId, photoFile = null, comment = '') {
+  const url = `${API_BASE}/photos/after/${scheduleId}`;
+
+  if (photoFile) {
+    // ファイルがある場合はFormDataで送信
+    const formData = new FormData();
+    formData.append('photo', photoFile);
+    formData.append('comment', comment);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+    return await response.json();
+  } else {
+    // ファイルがない場合は従来通り
+    return await apiRequest(`/photos/after/${scheduleId}`, {
+      method: 'POST',
+      body: JSON.stringify({ comment })
+    });
+  }
+}
+
+/**
+ * 写真を承認（講師用）
+ */
+async function approvePhoto(scheduleId, comment = '') {
+  const result = await apiRequest(`/photos/approve/${scheduleId}`, {
+    method: 'POST',
+    body: JSON.stringify({ comment })
+  });
+  return result;
+}
+
+/**
+ * 承認待ちの写真一覧を取得（講師用）
+ */
+async function getPendingPhotos() {
+  const result = await apiRequest('/photos/pending');
+  return result;
+}
+
+/**
+ * 写真ステータスを取得
+ */
+async function getPhotoStatus(scheduleId) {
+  const result = await apiRequest(`/photos/status/${scheduleId}`);
+  return result;
+}
+
+/**
+ * 写真ステータスをリセット（テスト用）
+ */
+async function resetPhotoStatus(scheduleId) {
+  const result = await apiRequest(`/photos/reset/${scheduleId}`, {
+    method: 'POST'
+  });
+  return result;
+}
+
+/**
+ * フォローアップメッセージを送信（講師用）
+ */
+async function sendFollowupMessage(studentId, message, scheduleId = null) {
+  const result = await apiRequest('/notifications/send-followup', {
+    method: 'POST',
+    body: JSON.stringify({ studentId, message, scheduleId })
+  });
+  return result;
+}
+
 // グローバルに公開
 window.scheduleAPI = {
   startGoogleLogin,
@@ -319,12 +450,23 @@ window.scheduleAPI = {
   logout,
   getSchedules,
   createSchedule,
+  createSchedulesBulk,
   updateSchedule,
   deleteSchedule,
+  cancelSchedule,
   syncFromGoogleCalendar,
   updateCustomerName,
   updateDisplayName,
   getLineLinkCode,
   checkLineStatus,
-  getCurrentUser
+  getCurrentUser,
+  // 写真関連
+  submitBeforePhoto,
+  submitAfterPhoto,
+  approvePhoto,
+  getPendingPhotos,
+  getPhotoStatus,
+  resetPhotoStatus,
+  // フォローアップ
+  sendFollowupMessage
 };

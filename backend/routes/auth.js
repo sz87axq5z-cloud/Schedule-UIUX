@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
+const { validate, schemas } = require('../middleware/validation');
 
 // googleapis を遅延ロード（起動時間短縮のため）
 let google = null;
@@ -136,7 +137,16 @@ router.get('/google/callback', async (req, res) => {
 
 // 現在のユーザー情報を取得
 router.get('/me', async (req, res) => {
-  const userId = req.session?.userId || req.query.userId;
+  // サーバーセッションを優先し、なければクエリパラメータを使用
+  // クエリパラメータはlocalStorageの30分セッションで管理されている
+  let userId = req.session?.userId;
+
+  // サーバーセッションがない場合、クエリパラメータから復元を試みる
+  if (!userId && req.query.userId) {
+    userId = req.query.userId;
+    // サーバーセッションを復元
+    req.session.userId = userId;
+  }
 
   if (!userId) {
     return res.json({
@@ -177,8 +187,10 @@ router.get('/me', async (req, res) => {
 });
 
 // ユーザーの役割を更新（生徒/講師）
-router.put('/role', async (req, res) => {
-  const userId = req.session?.userId || req.body.userId;
+// バリデーション: role は student または teacher のみ
+router.put('/role', validate(schemas.roleUpdate), async (req, res) => {
+  // セキュリティ修正: セッションのみを使用（body.userIdは使用しない）
+  const userId = req.session?.userId;
   const { role } = req.body;
 
   if (!userId) {
@@ -188,12 +200,7 @@ router.put('/role', async (req, res) => {
     });
   }
 
-  if (!['student', 'teacher'].includes(role)) {
-    return res.status(400).json({
-      success: false,
-      error: '役割は student または teacher を指定してください'
-    });
-  }
+  // バリデーションはミドルウェアで実行済み
 
   try {
     await db.collection('users').doc(userId).update({
@@ -215,8 +222,10 @@ router.put('/role', async (req, res) => {
 });
 
 // ユーザーの表示名を更新（初回ログイン時など）
-router.put('/displayName', async (req, res) => {
-  const userId = req.session?.userId || req.body.userId;
+// バリデーション: 表示名は1-50文字
+router.put('/displayName', validate(schemas.displayName), async (req, res) => {
+  // セキュリティ修正: セッションのみを使用（body.userIdは使用しない）
+  const userId = req.session?.userId;
   const { displayName } = req.body;
 
   if (!userId) {
@@ -226,12 +235,7 @@ router.put('/displayName', async (req, res) => {
     });
   }
 
-  if (!displayName || displayName.trim().length === 0) {
-    return res.status(400).json({
-      success: false,
-      error: '表示名を入力してください'
-    });
-  }
+  // バリデーションはミドルウェアで実行済み
 
   try {
     await db.collection('users').doc(userId).update({
@@ -269,8 +273,27 @@ router.post('/logout', (req, res) => {
 });
 
 // ユーザー一覧を取得（管理用）
+// セキュリティ修正: 認証と権限チェックを追加
 router.get('/users', async (req, res) => {
+  // 認証チェック
+  const userId = req.session?.userId;
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'ログインが必要です'
+    });
+  }
+
   try {
+    // 講師のみがユーザー一覧を取得可能
+    const currentUserDoc = await db.collection('users').doc(userId).get();
+    if (!currentUserDoc.exists || currentUserDoc.data().role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        error: 'この操作は講師のみ可能です'
+      });
+    }
+
     const snapshot = await db.collection('users').get();
     const users = [];
 

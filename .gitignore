@@ -10,3 +10,4 @@ netlify.toml.backup
 # Firebase秘密鍵（絶対に公開しない）
 firebase-service-account.json
 *-service-account.json
+backend/uploads/

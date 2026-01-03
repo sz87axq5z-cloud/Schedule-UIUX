@@ -11,9 +11,41 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/firebase');
 const { syncScheduleToCalendars, addEventToCalendar, updateCalendarEvent, deleteCalendarEvent, getCalendarEvent } = require('../services/googleCalendar');
+const { validate, schemas } = require('../middleware/validation');
 
 // コレクション名
 const COLLECTION = 'schedules';
+
+/**
+ * セキュリティ: 認証チェックヘルパー
+ * セッションからユーザーIDを取得し、ユーザー情報を返す
+ */
+async function getAuthenticatedUser(req) {
+  const userId = req.session?.userId;
+  if (!userId) return null;
+
+  const userDoc = await db.collection('users').doc(userId).get();
+  if (!userDoc.exists) return null;
+
+  return {
+    id: userId,
+    ...userDoc.data()
+  };
+}
+
+/**
+ * セキュリティ: スケジュールへのアクセス権限チェック
+ * ユーザーがスケジュールの関係者（生徒/講師）または講師ロールであるかを確認
+ */
+function canAccessSchedule(user, schedule) {
+  if (!user) return false;
+
+  // 講師ロールはすべてのスケジュールにアクセス可能
+  if (user.role === 'teacher') return true;
+
+  // スケジュールの生徒または講師である場合はアクセス可能
+  return schedule.studentId === user.id || schedule.teacherId === user.id;
+}
 
 /**
  * Firestoreのタイムスタンプを ISO文字列に変換
@@ -82,8 +114,18 @@ router.get('/', async (req, res) => {
 });
 
 // 特定のスケジュールを取得
+// セキュリティ修正: 認証と所有者チェックを追加
 router.get('/:id', async (req, res) => {
   try {
+    // 認証チェック
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ログインが必要です'
+      });
+    }
+
     const doc = await db.collection(COLLECTION).doc(req.params.id).get();
 
     if (!doc.exists) {
@@ -93,11 +135,21 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    const scheduleData = doc.data();
+
+    // 所有者チェック
+    if (!canAccessSchedule(user, scheduleData)) {
+      return res.status(403).json({
+        success: false,
+        error: 'このスケジュールへのアクセス権限がありません'
+      });
+    }
+
     res.json({
       success: true,
       data: {
         id: doc.id,
-        ...doc.data()
+        ...scheduleData
       }
     });
   } catch (error) {
@@ -110,25 +162,22 @@ router.get('/:id', async (req, res) => {
 });
 
 // スケジュールを作成
-router.post('/', async (req, res) => {
+// バリデーション: タイトル（1-100文字）、日時形式、開始<終了
+router.post('/', validate(schemas.scheduleCreate), async (req, res) => {
   try {
     const {
       title,
       startTime,
       endTime,
+      location,
+      locationIcon,
       studentId,
       studentName,
       teacherId,
       teacherName
     } = req.body;
 
-    // 必須項目のチェック
-    if (!title || !startTime || !endTime) {
-      return res.status(400).json({
-        success: false,
-        error: 'タイトル、開始時間、終了時間は必須です'
-      });
-    }
+    // バリデーションはミドルウェアで実行済み
 
     // 生徒の表示名を取得する優先順位:
     // 1. 既存スケジュールのstudentName
@@ -170,12 +219,15 @@ router.post('/', async (req, res) => {
       title,
       startTime: new Date(startTime),
       endTime: new Date(endTime),
+      location: location || null,
+      locationIcon: locationIcon || null,
       studentId: studentId || null,
       studentName: effectiveStudentName,
       teacherId: teacherId || null,
       teacherName: teacherName || null,
       status: 'scheduled',
-      googleEventId: null,
+      studentGoogleEventId: null,
+      teacherGoogleEventId: null,
       reminderSent: false,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -228,9 +280,132 @@ router.post('/', async (req, res) => {
   }
 });
 
-// スケジュールを更新
-router.put('/:id', async (req, res) => {
+// スケジュール一括登録（ウィザード用）
+// 複数の場所のスケジュールを一度に登録
+router.post('/bulk', validate(schemas.scheduleBulkCreate), async (req, res) => {
   try {
+    const { schedules, studentId, studentName } = req.body;
+
+    // 認証チェック（ログインユーザーを生徒として使用）
+    const user = await getAuthenticatedUser(req);
+    const effectiveStudentId = studentId || (user ? user.id : null);
+
+    // 生徒の表示名を取得
+    let effectiveStudentName = studentName || null;
+    if (effectiveStudentId && !effectiveStudentName) {
+      try {
+        // 既存スケジュールから名前を探す
+        const existingSchedules = await db.collection(COLLECTION)
+          .where('studentId', '==', effectiveStudentId)
+          .limit(1)
+          .get();
+
+        if (!existingSchedules.empty) {
+          const existingData = existingSchedules.docs[0].data();
+          if (existingData.studentName) {
+            effectiveStudentName = existingData.studentName;
+          }
+        } else if (user) {
+          effectiveStudentName = user.displayName || user.name;
+        }
+      } catch (err) {
+        console.error('表示名の取得エラー:', err.message);
+      }
+    }
+
+    const createdSchedules = [];
+    const errors = [];
+
+    for (const scheduleData of schedules) {
+      try {
+        // 場所名をタイトルとして使用
+        const title = scheduleData.location;
+
+        const newSchedule = {
+          title,
+          location: scheduleData.location,
+          locationIcon: scheduleData.locationIcon || null,
+          startTime: new Date(scheduleData.startTime),
+          endTime: new Date(scheduleData.endTime),
+          studentId: effectiveStudentId,
+          studentName: effectiveStudentName,
+          teacherId: process.env.TEACHER_USER_ID || null,
+          teacherName: null,
+          status: 'scheduled',
+          studentGoogleEventId: null,
+          teacherGoogleEventId: null,
+          teacherSyncPending: true,
+          reminderSent: false,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const docRef = await db.collection(COLLECTION).add(newSchedule);
+
+        // 生徒のGoogleカレンダーに同期
+        let calendarSync = { student: null };
+        if (effectiveStudentId) {
+          try {
+            const studentResult = await addEventToCalendar(effectiveStudentId, newSchedule, {
+              titlePrefix: null,
+              additionalDescription: null
+            });
+
+            if (studentResult && studentResult.id) {
+              await docRef.update({
+                studentGoogleEventId: studentResult.id
+              });
+              calendarSync.student = { success: true, googleEventId: studentResult.id };
+            }
+          } catch (syncError) {
+            console.error('生徒カレンダー同期エラー:', syncError);
+            calendarSync.student = { success: false, error: syncError.message };
+          }
+        }
+
+        createdSchedules.push({
+          id: docRef.id,
+          ...newSchedule,
+          calendarSync
+        });
+      } catch (error) {
+        console.error('スケジュール作成エラー:', error);
+        errors.push({
+          location: scheduleData.location,
+          error: error.message
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `${createdSchedules.length}件のスケジュールを作成しました`,
+      data: createdSchedules,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('一括スケジュール作成エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'スケジュールの作成に失敗しました'
+    });
+  }
+});
+
+// スケジュールを更新
+// セキュリティ修正: 認証と所有者チェックを追加
+// バリデーション: フィールドの形式と長さをチェック
+router.put('/:id', validate(schemas.scheduleUpdate), async (req, res) => {
+  try {
+    // 認証チェック
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ログインが必要です'
+      });
+    }
+
     const docRef = db.collection(COLLECTION).doc(req.params.id);
     const doc = await docRef.get();
 
@@ -242,6 +417,14 @@ router.put('/:id', async (req, res) => {
     }
 
     const existingData = doc.data();
+
+    // 所有者チェック
+    if (!canAccessSchedule(user, existingData)) {
+      return res.status(403).json({
+        success: false,
+        error: 'このスケジュールを編集する権限がありません'
+      });
+    }
 
     // 更新データを準備
     const updateData = {
@@ -336,8 +519,18 @@ router.put('/:id', async (req, res) => {
 });
 
 // スケジュールを削除
+// セキュリティ修正: 認証と所有者チェックを追加
 router.delete('/:id', async (req, res) => {
   try {
+    // 認証チェック
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ログインが必要です'
+      });
+    }
+
     const docRef = db.collection(COLLECTION).doc(req.params.id);
     const doc = await docRef.get();
 
@@ -349,6 +542,15 @@ router.delete('/:id', async (req, res) => {
     }
 
     const existingData = doc.data();
+
+    // 所有者チェック
+    if (!canAccessSchedule(user, existingData)) {
+      return res.status(403).json({
+        success: false,
+        error: 'このスケジュールを削除する権限がありません'
+      });
+    }
+
     let calendarSync = { student: null, teacher: null };
 
     // 生徒のGoogleカレンダーから削除
@@ -387,6 +589,67 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'スケジュールの削除に失敗しました'
+    });
+  }
+});
+
+// スケジュールをキャンセル（削除ではなく履歴として残す）
+router.post('/:id/cancel', async (req, res) => {
+  try {
+    // 認証チェック
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ログインが必要です'
+      });
+    }
+
+    const docRef = db.collection(COLLECTION).doc(req.params.id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'スケジュールが見つかりません'
+      });
+    }
+
+    const existingData = doc.data();
+
+    // 所有者チェック
+    if (!canAccessSchedule(user, existingData)) {
+      return res.status(403).json({
+        success: false,
+        error: 'このスケジュールをキャンセルする権限がありません'
+      });
+    }
+
+    // scheduled状態のみキャンセル可能
+    if (existingData.status && existingData.status !== 'scheduled') {
+      return res.status(400).json({
+        success: false,
+        error: '開始済みの予定はキャンセルできません'
+      });
+    }
+
+    // ステータスをcancelledに更新
+    await docRef.update({
+      status: 'cancelled',
+      cancelledAt: new Date(),
+      cancelledBy: user.id,
+      updatedAt: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: 'スケジュールをキャンセルしました'
+    });
+  } catch (error) {
+    console.error('スケジュールキャンセルエラー:', error);
+    res.status(500).json({
+      success: false,
+      error: 'スケジュールのキャンセルに失敗しました'
     });
   }
 });
@@ -772,8 +1035,27 @@ router.post('/sync-from-google', async (req, res) => {
 });
 
 // 顧客（生徒）の表示名を更新し、Googleカレンダーに同期
-router.put('/customer/:studentId/name', async (req, res) => {
+// セキュリティ修正: 講師のみ実行可能
+// バリデーション: 表示名は1-100文字
+router.put('/customer/:studentId/name', validate(schemas.customerName), async (req, res) => {
   try {
+    // 認証チェック
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'ログインが必要です'
+      });
+    }
+
+    // 講師のみ実行可能
+    if (user.role !== 'teacher') {
+      return res.status(403).json({
+        success: false,
+        error: 'この操作は講師のみ可能です'
+      });
+    }
+
     const { studentId } = req.params;
     const { displayName } = req.body;
 
@@ -973,6 +1255,160 @@ router.post('/batch-sync-teacher', async (req, res) => {
     });
   } catch (error) {
     console.error('講師カレンダーバッチ同期エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * 開発用: テストデータセットアップ
+ * POST /api/schedules/dev/setup-test-data
+ */
+router.post('/dev/setup-test-data', async (req, res) => {
+  // 開発環境のみ
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ success: false, error: 'Development only' });
+  }
+
+  try {
+    const { keepScheduleId } = req.body || {};
+
+    // LINE連携済みの生徒を自動的に取得
+    let testUserId = req.body?.testUserId || process.env.TEST_USER_ID;
+    let testUserName = '横地';
+
+    if (!testUserId) {
+      // LINE連携済みの生徒を検索（インデックス不要なクエリ）
+      const usersSnapshot = await db.collection('users').get();
+      const lineLinkedStudent = usersSnapshot.docs.find(doc => {
+        const data = doc.data();
+        return data.role === 'student' && data.lineUserId;
+      });
+
+      if (lineLinkedStudent) {
+        testUserId = lineLinkedStudent.id;
+        const userData = lineLinkedStudent.data();
+        testUserName = userData.displayName || userData.name || '生徒';
+        console.log(`テスト用にLINE連携済み生徒を使用: ${testUserId} (${testUserName})`);
+      } else {
+        testUserId = 'test-student-001';
+        console.log('LINE連携済み生徒が見つからないため、ダミーIDを使用');
+      }
+    }
+
+    // 既存スケジュールを削除（keepScheduleId以外）
+    const snapshot = await db.collection(COLLECTION).get();
+    const batch = db.batch();
+    let deleteCount = 0;
+
+    snapshot.docs.forEach(doc => {
+      if (doc.id !== keepScheduleId) {
+        batch.delete(doc.ref);
+        deleteCount++;
+      }
+    });
+
+    await batch.commit();
+
+    // テスト用スケジュールを作成
+    const now = new Date();
+    const testSchedules = [];
+
+    // 1. 要フォロー用（過去の日付、scheduled状態）
+    const overdueDate = new Date(now);
+    overdueDate.setDate(overdueDate.getDate() - 3);
+    overdueDate.setHours(10, 0, 0, 0);
+    const overdueSchedule = {
+      title: 'クローゼット整理',
+      location: 'クローゼット',
+      locationIcon: '🧥',
+      startTime: overdueDate,
+      endTime: new Date(overdueDate.getTime() + 2 * 60 * 60 * 1000),
+      studentId: testUserId,
+      studentName: testUserName,
+      status: 'scheduled',
+      createdAt: new Date()
+    };
+    const overdueRef = await db.collection(COLLECTION).add(overdueSchedule);
+    testSchedules.push({ id: overdueRef.id, type: 'overdue', ...overdueSchedule });
+
+    // 2. 1時間前リマインド用（約1時間後）
+    const oneHourLater = new Date(now);
+    oneHourLater.setMinutes(oneHourLater.getMinutes() + 65); // 65分後
+    oneHourLater.setSeconds(0);
+    const hourlySchedule = {
+      title: '【テスト】1時間前リマインド確認',
+      location: 'キッチン',
+      locationIcon: '🍳',
+      startTime: oneHourLater,
+      endTime: new Date(oneHourLater.getTime() + 60 * 60 * 1000),
+      studentId: testUserId,
+      studentName: testUserName,
+      status: 'scheduled',
+      createdAt: new Date()
+    };
+    const hourlyRef = await db.collection(COLLECTION).add(hourlySchedule);
+    testSchedules.push({ id: hourlyRef.id, type: 'hourly-reminder', ...hourlySchedule });
+
+    // 3. 前日リマインド用（明日の朝）
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    const dailySchedule = {
+      title: '【テスト】前日リマインド確認',
+      location: 'リビング',
+      locationIcon: '🛋️',
+      startTime: tomorrow,
+      endTime: new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000),
+      studentId: testUserId,
+      studentName: testUserName,
+      status: 'scheduled',
+      createdAt: new Date()
+    };
+    const dailyRef = await db.collection(COLLECTION).add(dailySchedule);
+    testSchedules.push({ id: dailyRef.id, type: 'daily-reminder', ...dailySchedule });
+
+    // 4. 写真承認テスト用（pending_approval状態）
+    const approvalTestDate = new Date(now);
+    approvalTestDate.setDate(approvalTestDate.getDate() - 1);
+    approvalTestDate.setHours(14, 0, 0, 0);
+    const approvalSchedule = {
+      title: '洗面所整理',
+      location: '洗面所',
+      locationIcon: '🚿',
+      startTime: approvalTestDate,
+      endTime: new Date(approvalTestDate.getTime() + 2 * 60 * 60 * 1000),
+      studentId: testUserId,
+      studentName: testUserName,
+      status: 'pending_approval',
+      beforePhoto: {
+        url: 'demo-before-photo.jpg',
+        submittedAt: new Date(approvalTestDate.getTime() + 30 * 60 * 1000)
+      },
+      afterPhoto: {
+        url: 'demo-after-photo.jpg',
+        submittedAt: new Date(approvalTestDate.getTime() + 2 * 60 * 60 * 1000)
+      },
+      createdAt: new Date()
+    };
+    const approvalRef = await db.collection(COLLECTION).add(approvalSchedule);
+    testSchedules.push({ id: approvalRef.id, type: 'pending-approval', ...approvalSchedule });
+
+    res.json({
+      success: true,
+      message: `${deleteCount}件削除、${testSchedules.length}件作成`,
+      deletedCount: deleteCount,
+      createdSchedules: testSchedules.map(s => ({
+        id: s.id,
+        type: s.type,
+        title: s.title,
+        startTime: s.startTime
+      }))
+    });
+  } catch (error) {
+    console.error('テストデータセットアップエラー:', error);
     res.status(500).json({
       success: false,
       error: error.message

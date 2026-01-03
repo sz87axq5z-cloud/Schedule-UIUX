@@ -18,6 +18,7 @@ COPY scripts/ ./scripts/
 
 # Cloud Runはポート8080を使用
 ENV PORT=8080
+ENV NODE_ENV=production
 
 # バックエンドディレクトリに移動して起動
 WORKDIR /app/backend

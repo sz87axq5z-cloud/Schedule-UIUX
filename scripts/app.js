@@ -95,6 +95,21 @@ const $lineLinkCode = byId("lineLinkCode");
 const $lineSkipBtn = byId("lineSkipBtn");
 const $lineCheckBtn = byId("lineCheckBtn");
 
+// 設定モーダル
+const $settingsModal = byId("settingsModal");
+const $settingsModalOverlay = byId("settingsModalOverlay");
+const $settingsModalClose = byId("settingsModalClose");
+const $openSettingsBtn = byId("openSettingsBtn");
+const $settingsCurrentName = byId("settingsCurrentName");
+const $settingsEditNameBtn = byId("settingsEditNameBtn");
+const $settingsNameEditForm = byId("settingsNameEditForm");
+const $settingsNameInput = byId("settingsNameInput");
+const $settingsNameCancel = byId("settingsNameCancel");
+const $settingsNameSave = byId("settingsNameSave");
+const $settingsLineStatus = byId("settingsLineStatus");
+const $settingsLineLinkBtn = byId("settingsLineLinkBtn");
+const $settingsLogoutBtn = byId("settingsLogoutBtn");
+
 // ブラウザ履歴制御用フラグ
 let suppressHistory = false;
 
@@ -386,8 +401,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         const result = await window.scheduleAPI.checkLineStatus();
         if (result.success && result.linked) {
           alert('LINE連携が完了しました！');
-          hideLineModal();
-          proceedToModeSelect();
+          // 再連携モードかどうかで処理を分岐
+          if (typeof isLineRelinkMode !== 'undefined' && isLineRelinkMode) {
+            // 再連携モード：モーダルを閉じるだけ
+            hideLineModalGlobal();
+          } else {
+            // 初回連携：モード選択へ進む
+            hideLineModal();
+            proceedToModeSelect();
+          }
         } else {
           alert('まだLINE連携が完了していません。\nLINEで連携コードを送信してください。');
         }
@@ -1287,11 +1309,14 @@ async function deleteEvent(eventId) {
  * @param {boolean} syncFirst - trueの場合、先にGoogleカレンダーから同期する
  */
 async function loadSchedulesFromAPI(syncFirst = false) {
+  const $syncIndicator = document.getElementById('syncIndicator');
   try {
     // Googleカレンダーから同期（ログイン済みの場合のみ）
     if (syncFirst && currentUserId) {
       try {
         console.log('Googleカレンダーから同期中...');
+        // 同期インジケーターを表示
+        if ($syncIndicator) $syncIndicator.style.display = 'flex';
         const syncResult = await window.scheduleAPI.syncFromGoogleCalendar(currentUserId);
         if (syncResult.success) {
           console.log('同期完了:', syncResult.results);
@@ -1299,6 +1324,9 @@ async function loadSchedulesFromAPI(syncFirst = false) {
       } catch (syncError) {
         console.error('Googleカレンダー同期エラー:', syncError);
         // 同期に失敗しても続行
+      } finally {
+        // 同期インジケーターを非表示
+        if ($syncIndicator) $syncIndicator.style.display = 'none';
       }
     }
 
@@ -1828,5 +1856,294 @@ function renderTaskGroupInto(container, list, isOverdue = false){
       openEventDetail(ev);
     });
     container.appendChild(item);
+  });
+}
+
+// ========================================
+// 設定モーダル
+// ========================================
+
+function openSettingsModal() {
+  if (!$settingsModal || !$settingsModalOverlay) return;
+
+  // サイドバーを閉じる
+  document.body.classList.remove('sidebar-open');
+
+  // 現在の表示名を設定
+  if (loggedInUser && $settingsCurrentName) {
+    $settingsCurrentName.textContent = loggedInUser.displayName || loggedInUser.name || '-';
+  }
+
+  // LINE連携状態を確認
+  checkLineStatusForSettings();
+
+  // 名前編集フォームを非表示
+  if ($settingsNameEditForm) {
+    $settingsNameEditForm.style.display = 'none';
+  }
+
+  $settingsModalOverlay.style.display = 'block';
+  $settingsModal.style.display = 'flex';
+  $settingsModalOverlay.setAttribute('aria-hidden', 'false');
+  $settingsModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeSettingsModal() {
+  if (!$settingsModal || !$settingsModalOverlay) return;
+
+  $settingsModalOverlay.style.display = 'none';
+  $settingsModal.style.display = 'none';
+  $settingsModalOverlay.setAttribute('aria-hidden', 'true');
+  $settingsModal.setAttribute('aria-hidden', 'true');
+}
+
+async function checkLineStatusForSettings() {
+  if (!$settingsLineStatus || !currentUserId) return;
+
+  $settingsLineStatus.textContent = '確認中...';
+  $settingsLineStatus.className = 'settings-item-value';
+
+  try {
+    const status = await api.getLineStatus(currentUserId);
+    if (status.linked) {
+      $settingsLineStatus.textContent = '連携済み';
+      $settingsLineStatus.className = 'settings-item-value linked';
+    } else {
+      $settingsLineStatus.textContent = '未連携';
+      $settingsLineStatus.className = 'settings-item-value not-linked';
+    }
+  } catch (e) {
+    $settingsLineStatus.textContent = '確認エラー';
+    $settingsLineStatus.className = 'settings-item-value not-linked';
+  }
+}
+
+function showNameEditForm() {
+  if (!$settingsNameEditForm || !$settingsNameInput) return;
+
+  $settingsNameInput.value = loggedInUser?.displayName || loggedInUser?.name || '';
+  $settingsNameEditForm.style.display = 'flex';
+}
+
+function hideNameEditForm() {
+  if (!$settingsNameEditForm) return;
+  $settingsNameEditForm.style.display = 'none';
+}
+
+async function saveDisplayName() {
+  if (!$settingsNameInput) return;
+
+  const newName = $settingsNameInput.value.trim();
+  if (!newName) {
+    alert('表示名を入力してください');
+    return;
+  }
+
+  try {
+    const result = await api.updateDisplayName(newName);
+    if (result.success) {
+      // ローカルのユーザー情報を更新
+      if (loggedInUser) {
+        loggedInUser.displayName = newName;
+      }
+      if ($settingsCurrentName) {
+        $settingsCurrentName.textContent = newName;
+      }
+      hideNameEditForm();
+      alert('表示名を更新しました');
+    } else {
+      alert('表示名の更新に失敗しました: ' + (result.error || ''));
+    }
+  } catch (e) {
+    console.error('表示名更新エラー:', e);
+    alert('表示名の更新に失敗しました');
+  }
+}
+
+// LINE再連携モードフラグ（グローバル）
+let isLineRelinkMode = false;
+
+// LINE連携モーダルを表示（グローバル関数・再連携用）
+async function showLineModalGlobal() {
+  const $lineModal = document.getElementById("lineModal");
+  const $lineModalOverlay = document.getElementById("lineModalOverlay");
+  const $lineLinkCode = document.getElementById("lineLinkCode");
+  const $lineModalClose = document.getElementById("lineModalClose");
+  const $lineSkipBtn = document.getElementById("lineSkipBtn");
+
+  // 再連携モードをON
+  isLineRelinkMode = true;
+
+  if ($lineModal && $lineModalOverlay) {
+    $lineModalOverlay.classList.add('open');
+    $lineModal.classList.add('open');
+    $lineModal.setAttribute('aria-hidden', 'false');
+    $lineModalOverlay.setAttribute('aria-hidden', 'false');
+    $lineModalOverlay.style.display = 'block';
+    $lineModal.style.display = 'flex';
+
+    // 再連携時は閉じるボタンを表示、スキップボタンを非表示
+    if ($lineModalClose) {
+      $lineModalClose.style.display = 'block';
+    }
+    if ($lineSkipBtn) {
+      $lineSkipBtn.style.display = 'none';
+    }
+
+    // 連携コードを取得
+    if ($lineLinkCode) {
+      $lineLinkCode.textContent = '------';
+    }
+    try {
+      const result = await window.scheduleAPI.getLineLinkCode();
+      if (result.success && result.linkCode) {
+        if ($lineLinkCode) {
+          $lineLinkCode.textContent = result.linkCode;
+        }
+      }
+    } catch (error) {
+      console.error('連携コード取得エラー:', error);
+    }
+  }
+}
+
+// LINE連携モーダルを閉じる（グローバル関数）
+function hideLineModalGlobal() {
+  const $lineModal = document.getElementById("lineModal");
+  const $lineModalOverlay = document.getElementById("lineModalOverlay");
+  const $lineModalClose = document.getElementById("lineModalClose");
+  const $lineSkipBtn = document.getElementById("lineSkipBtn");
+
+  if ($lineModal && $lineModalOverlay) {
+    $lineModalOverlay.classList.remove('open');
+    $lineModal.classList.remove('open');
+    $lineModal.setAttribute('aria-hidden', 'true');
+    $lineModalOverlay.setAttribute('aria-hidden', 'true');
+    $lineModalOverlay.style.display = 'none';
+    $lineModal.style.display = 'none';
+  }
+
+  // 閉じるボタンを非表示に戻す、スキップボタンを表示に戻す
+  if ($lineModalClose) {
+    $lineModalClose.style.display = 'none';
+  }
+  if ($lineSkipBtn) {
+    $lineSkipBtn.style.display = 'inline-flex';
+  }
+
+  // 再連携モードをOFF
+  isLineRelinkMode = false;
+}
+
+function openLineRelinkModal() {
+  // 設定モーダルを閉じてLINE連携モーダルを開く
+  closeSettingsModal();
+  showLineModalGlobal();
+}
+
+// LINE連携モーダルの閉じるボタン
+const $lineModalCloseBtn = document.getElementById("lineModalClose");
+if ($lineModalCloseBtn) {
+  $lineModalCloseBtn.addEventListener('click', hideLineModalGlobal);
+}
+
+// 設定モーダルのイベントリスナー
+if ($openSettingsBtn) {
+  $openSettingsBtn.addEventListener('click', openSettingsModal);
+}
+
+// ヘッダーの設定ボタン
+const $headerSettingsBtn = document.getElementById("headerSettingsBtn");
+if ($headerSettingsBtn) {
+  $headerSettingsBtn.addEventListener('click', openSettingsModal);
+}
+
+if ($settingsModalClose) {
+  $settingsModalClose.addEventListener('click', closeSettingsModal);
+}
+
+if ($settingsModalOverlay) {
+  $settingsModalOverlay.addEventListener('click', closeSettingsModal);
+}
+
+if ($settingsEditNameBtn) {
+  $settingsEditNameBtn.addEventListener('click', showNameEditForm);
+}
+
+if ($settingsNameCancel) {
+  $settingsNameCancel.addEventListener('click', hideNameEditForm);
+}
+
+if ($settingsNameSave) {
+  $settingsNameSave.addEventListener('click', saveDisplayName);
+}
+
+if ($settingsLineLinkBtn) {
+  $settingsLineLinkBtn.addEventListener('click', openLineRelinkModal);
+}
+
+if ($settingsLogoutBtn) {
+  $settingsLogoutBtn.addEventListener('click', async () => {
+    if (confirm('ログアウトしますか？')) {
+      closeSettingsModal();
+      try {
+        await api.logout();
+      } catch (e) {
+        console.error('ログアウトエラー:', e);
+      }
+
+      // ログイン画面に戻る（style.displayも設定）
+      if ($app) {
+        $app.style.display = "none";
+        $app.setAttribute("aria-hidden", "true");
+      }
+      if ($login) {
+        $login.style.display = "";
+        $login.setAttribute("aria-hidden", "false");
+      }
+
+      // logged-inクラスを削除
+      document.body.classList.remove('logged-in');
+
+      // ログインボタンとカードをリセット
+      if ($loginBtn) {
+        $loginBtn.style.display = "inline-flex";
+        $loginBtn.textContent = "Googleでログイン";
+        $loginBtn.disabled = false;
+      }
+      const $loginCard = document.querySelector('.login-card');
+      if ($loginCard) {
+        $loginCard.style.display = "block";
+      }
+      const $loginOverlay = document.getElementById("loginOverlay");
+      if ($loginOverlay) {
+        $loginOverlay.style.display = "none";
+      }
+
+      // モード選択を非表示
+      if ($modeSelect) {
+        $modeSelect.style.display = "none";
+        $modeSelect.setAttribute("aria-hidden", "true");
+      }
+
+      // FABボタンを非表示
+      const $calendarFab = document.getElementById("calendarFab");
+      const $tasksFab = document.getElementById("tasksFab");
+      if ($calendarFab) $calendarFab.style.display = "none";
+      if ($tasksFab) $tasksFab.style.display = "none";
+
+      // サイドバーを閉じる
+      document.body.classList.remove('sidebar-open');
+
+      // 保存された画面状態をクリア
+      try {
+        sessionStorage.removeItem('screenState');
+        localStorage.removeItem('schedule_app_session');
+      } catch (e) {}
+
+      // 状態をリセット
+      currentUserId = null;
+      loggedInUser = null;
+    }
   });
 }

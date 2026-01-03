@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>スケジュール管理アプリ</title>
-  <link rel="stylesheet" href="styles/style.css?v=19" />
+  <link rel="stylesheet" href="styles/style.css?v=22" />
 </head>
 <body>
   <!-- ログイン画面 -->
@@ -43,6 +43,7 @@
       </div>
       <div class="app-header-right">
         <button id="headerGoCalendar" class="user-link-btn" type="button">タスク</button>
+        <button id="headerSettingsBtn" class="header-settings-btn" type="button" aria-label="設定">⚙️</button>
         <button id="menuBtn" class="menu-hamburger" aria-label="メニュー">
           <span></span>
           <span></span>
@@ -82,10 +83,20 @@
           </div>
           <div class="mini-grid" id="miniGrid"></div>
         </div>
+        <div class="sidebar-settings">
+          <button id="openSettingsBtn" class="sidebar-settings-btn" type="button">
+            <span class="settings-icon">⚙️</span>
+            <span>設定</span>
+          </button>
+        </div>
       </aside>
 
       <main class="calendar" aria-label="メインカレンダー" id="calendarMain">
         <div id="loading" class="loading">読み込み中...</div>
+        <div id="syncIndicator" class="sync-indicator" style="display:none;">
+          <span class="sync-spinner"></span>
+          <span class="sync-text">Googleカレンダーと同期中...</span>
+        </div>
         <div class="week-header" id="weekHeader"></div>
         <div class="week-grid" id="weekGrid" tabindex="0" aria-label="週の時間グリッド"></div>
       </main>
@@ -146,6 +157,9 @@
   <div id="lineModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="lineModalTitle" aria-hidden="true">
     <div class="modal-header">
       <h2 id="lineModalTitle">LINE連携</h2>
+      <div class="modal-header-actions">
+        <button id="lineModalClose" class="btn btn-ghost line-modal-close-btn" aria-label="閉じる" style="display:none;">×</button>
+      </div>
     </div>
     <div id="lineModalBody" class="modal-body">
       <p class="line-modal-desc">LINEと連携すると、予定のリマインドを受け取ることができます。</p>
@@ -249,8 +263,65 @@
     </form>
   </div>
 
+  <!-- 設定モーダル -->
+  <div id="settingsModalOverlay" class="modal-overlay" aria-hidden="true"></div>
+  <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle" aria-hidden="true">
+    <div class="modal-header">
+      <h2 id="settingsModalTitle">設定</h2>
+      <div class="modal-header-actions">
+        <button id="settingsModalClose" class="btn btn-ghost" aria-label="閉じる">×</button>
+      </div>
+    </div>
+    <div class="modal-body settings-modal-body">
+      <!-- 表示名の変更 -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">プロフィール</h3>
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <span class="settings-item-label">表示名</span>
+            <span id="settingsCurrentName" class="settings-item-value">-</span>
+          </div>
+          <button id="settingsEditNameBtn" class="btn btn-ghost btn-sm" type="button">編集</button>
+        </div>
+        <div id="settingsNameEditForm" class="settings-edit-form" style="display:none;">
+          <input type="text" id="settingsNameInput" class="settings-input" placeholder="新しい表示名" />
+          <div class="settings-edit-actions">
+            <button id="settingsNameCancel" class="btn btn-ghost btn-sm" type="button">キャンセル</button>
+            <button id="settingsNameSave" class="btn btn-primary btn-sm" type="button">保存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINE連携 -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">LINE連携</h3>
+        <div class="settings-item">
+          <div class="settings-item-info">
+            <span class="settings-item-label">連携状態</span>
+            <span id="settingsLineStatus" class="settings-item-value">確認中...</span>
+          </div>
+          <button id="settingsLineLinkBtn" class="btn btn-line btn-sm" type="button">再連携</button>
+        </div>
+      </div>
+
+      <!-- その他 -->
+      <div class="settings-section">
+        <h3 class="settings-section-title">その他</h3>
+        <div class="settings-item">
+          <a href="privacy.html" target="_blank" class="settings-link">
+            <span>プライバシーポリシー</span>
+            <span class="settings-link-arrow">→</span>
+          </a>
+        </div>
+        <div class="settings-item">
+          <button id="settingsLogoutBtn" class="btn btn-danger btn-sm" type="button">ログアウト</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="scripts/data.js?v=2"></script>
   <script src="scripts/api.js?v=5"></script>
-  <script src="scripts/app.js?v=13"></script>
+  <script src="scripts/app.js?v=18"></script>
 </body>
 </html>
