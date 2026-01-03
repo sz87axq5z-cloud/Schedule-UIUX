@@ -585,6 +585,98 @@ router.post('/reminders/send-hourly', async (req, res) => {
 });
 
 /**
+ * 5分前リマインド送信（毎分実行して、5分前の予定を通知）
+ * 予定開始5分前にビフォー写真を送るよう促すLINE通知
+ */
+router.post('/reminders/send-5min', async (req, res) => {
+  try {
+    const now = new Date();
+
+    // 3分後〜7分後の範囲の予定を取得（5分前リマインド）
+    const fiveMinLater = new Date(now.getTime() + 3 * 60 * 1000);
+    const fiveMinLaterEnd = new Date(now.getTime() + 7 * 60 * 1000);
+
+    // 今日の日付文字列 + "5min"（重複チェック用）
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-5min`;
+
+    console.log(`5分前リマインド: ${fiveMinLater.toISOString()} 〜 ${fiveMinLaterEnd.toISOString()}`);
+
+    // 5分後に開始する予定を取得
+    const schedulesSnapshot = await db.collection('schedules')
+      .where('startTime', '>=', fiveMinLater)
+      .where('startTime', '<=', fiveMinLaterEnd)
+      .get();
+
+    let sentCount = 0;
+    let skippedCount = 0;
+
+    for (const doc of schedulesSnapshot.docs) {
+      const schedule = doc.data();
+      const studentId = schedule.studentId;
+
+      if (!studentId) continue;
+
+      // ビフォー写真が既に送られている場合はスキップ
+      if (schedule.status === 'before_submitted' || schedule.status === 'pending_approval' || schedule.status === 'completed') {
+        console.log(`スキップ（既に開始済み）: ${doc.id}`);
+        skippedCount++;
+        continue;
+      }
+
+      // 5分前リマインドを既に送信済みかチェック
+      if (schedule.fiveMinReminderSentDate === todayStr) {
+        console.log(`スキップ（5分前リマインド送信済み）: ${doc.id}`);
+        skippedCount++;
+        continue;
+      }
+
+      // 生徒情報を取得
+      const userDoc = await db.collection('users').doc(studentId).get();
+      if (!userDoc.exists) continue;
+
+      const user = userDoc.data();
+      const lineUserId = user.lineUserId;
+      if (!lineUserId) continue;
+
+      // 時刻をフォーマット
+      const startTime = schedule.startTime.toDate ? schedule.startTime.toDate() : new Date(schedule.startTime);
+      const endTime = schedule.endTime.toDate ? schedule.endTime.toDate() : new Date(schedule.endTime);
+      const { timeStr } = formatScheduleDateTime(startTime, endTime);
+
+      // 5分前リマインドメッセージ
+      const message = {
+        type: 'text',
+        text: `📸 まもなく片付け開始！\n\n${user.displayName || user.name}さん、あと5分で予定の時間です。\n\n【${timeStr}】\n${schedule.locationIcon || '📋'} ${schedule.title || schedule.location}\n\n⬇️ 片付けを始める前に「ビフォー写真」を送ってください！`
+      };
+
+      const result = await sendLineMessage(lineUserId, message);
+      if (result.success) {
+        // 送信成功したら fiveMinReminderSentDate を更新
+        await doc.ref.update({
+          fiveMinReminderSentDate: todayStr,
+          fiveMinReminderSentAt: new Date()
+        });
+        sentCount++;
+        console.log(`5分前リマインド送信成功: ${studentId}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${sentCount}件の5分前リマインドを送信しました（${skippedCount}件はスキップ）`,
+      sent: sentCount,
+      skipped: skippedCount
+    });
+  } catch (error) {
+    console.error('5分前リマインド送信エラー:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+/**
  * テスト用：特定ユーザーにLINEメッセージを送信
  */
 router.post('/line/test', async (req, res) => {
